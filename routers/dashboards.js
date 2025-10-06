@@ -23,35 +23,6 @@ router.post("/telegram", async (req, res) => {
     }
 });
 
-router.post("/user", async (req, res) => {
-    const { name, email, number } = req.body;
-
-    if (!name || !email || !number) {
-        return res.status(400).json({ status: "All fields are required!" });
-    }
-
-    try {
-        const user = await User.create({ name, email, number });
-        res.status(201).json({ status: "User created successfully!", user });
-    } catch (err) {
-        console.error(err);
-        // Duplicate email or number handle
-        if (err.code === 11000) {
-            return res.status(409).json({ status: "Email or number already exists!" });
-        }
-        res.status(500).json({ status: "Server error", error: err.message });
-    }
-});
-
-router.get("/users", async (req, res) => {
-    try {
-        const users = await User.find();
-        res.status(200).json({ status: "success", users });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: "error", message: err.message });
-    }
-});
 router.post("/Product", async (req, res) => {
     const { name, productName, price, width } = req.body;
 
@@ -95,7 +66,7 @@ router.get("/Products", async (req, res) => {
     }
 });
 
-router.post("/user", async (req, res) => {
+router.post("/Users", async (req, res) => {
     const { user_id, username, user_address, referrer_id, referral_address, telegram_id } = req.body;
 
     if (!user_id || !username || !user_address || !referral_address) {
@@ -113,6 +84,32 @@ router.post("/user", async (req, res) => {
         });
 
         res.status(201).json({ status: "User created successfully!", data: newUser });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ status: "Server error", error: err.message });
+    }
+});
+router.get("/Users", async (req, res) => {
+    try {
+        const users = await User.find(); // Mongoose uses find()
+        res.status(200).json({ status: "Success", data: users });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ status: "Server error", error: err.message });
+    }
+});
+
+// Get user by ID
+router.get("/Users/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findOne({ user_id: id }); // match your schema field
+
+        if (!user) {
+            return res.status(404).json({ status: "User not found!" });
+        }
+
+        res.status(200).json({ status: "Success", data: user });
     } catch (err) {
         console.error(err);
         res.status(500).json({ status: "Server error", error: err.message });
