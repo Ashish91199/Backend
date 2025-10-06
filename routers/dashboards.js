@@ -74,6 +74,7 @@ router.post("/Users", async (req, res) => {
     }
 
     try {
+
         const newUser = await User.create({
             user_id,
             username,
@@ -82,7 +83,18 @@ router.post("/Users", async (req, res) => {
             referral_address,
             telegram_id: telegram_id || null
         });
+        if (newUser && referrer_id) {
+            // Find the referrer
+            const referrer = await User.findOne({ user_id: referrer_id });
 
+            if (referrer) {
+                // Add $5 direct income
+                await User.updateOne(
+                    { _id: referrer._id },
+                    { $inc: { direct_income: 5, referral_income: 2 } } // change 2 to whatever referral income you want
+                );
+            }
+        }
         res.status(201).json({ status: "User created successfully!", data: newUser });
     } catch (err) {
         console.error(err);
