@@ -83,16 +83,17 @@ router.post("/Users", async (req, res) => {
             referral_address,
             telegram_id: telegram_id || null
         });
-        if (newUser && referrer_id) {
-            // Find the referrer
-            const referrer = await User.findOne({ user_id: referrer_id });
-
-            if (referrer) {
-                // Add $5 direct income
+        if (newUser) {
+            const findReffer = await User.findOne({ referrer_id: referrer_id })
+            if (findReffer) {
                 await User.updateOne(
-                    { _id: referrer._id },
-                    { $inc: { direct_income: 5, referral_income: 2 } } // change 2 to whatever referral income you want
-                );
+                    { _id: findReffer._id },
+                    {
+                        $inc: {
+                            direct_income: 5
+                        }
+                    }
+                )
             }
         }
         res.status(201).json({ status: "User created successfully!", data: newUser });
