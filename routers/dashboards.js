@@ -91,6 +91,7 @@ router.post("/Users", async (req, res) => {
                     {
                         $inc: {
                             direct_income: 5
+
                         }
                     }
                 )
@@ -116,17 +117,29 @@ router.get("/Users", async (req, res) => {
 router.get("/Users/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const user = await User.findOne({ user_id: id }); // match your schema field
 
+        // Step 1: Find main user
+        const user = await User.findOne({ user_id: id });
         if (!user) {
             return res.status(404).json({ status: "User not found!" });
         }
 
-        res.status(200).json({ status: "Success", data: user });
+        // Step 2: Find all users referred by this user
+        const referrals = await User.find({ referrer_id: user.user_id })
+            .select("user_id username telegram_id createdAt");
+
+        // Step 3: Combine both
+        const result = {
+
+            referrals: referrals
+        };
+
+        res.status(200).json({ status: "Success", data: referrals });
     } catch (err) {
-        console.error(err);
+        console.error("Error fetching user and referrals:", err);
         res.status(500).json({ status: "Server error", error: err.message });
     }
 });
+
 
 module.exports = router;
