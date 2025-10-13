@@ -2,6 +2,7 @@ require("dotenv").config();
 require("./connection");
 const Web3 = require("web3");
 const express = require("express");
+const cron = require("node-cron");
 const cors = require("cors");
 const app = express();
 const path = require("path");
@@ -10,8 +11,10 @@ const dashboards = require("./routers/dashboards");
 const adminlogin = require("./routers/adminlogin");
 const TelegramBot = require('node-telegram-bot-api');
 const User = require("./model/User");
+const { connect } = require("http2");
+const { getWeb3Data } = require('./indexer');
+const directLevelIncome = require("./helper");
 const token = process.env.TELEGRAM_TOKEN; // Replace with your actual bot token
-
 const bot = new TelegramBot(token, { polling: true });
 
 
@@ -96,8 +99,32 @@ const web3 = new Web3(
     },
   })
 );
+// connect()
+//   .then(() => {
+//     console.log("Database connected successfully");
+//     app.listen(port, () => {
+//       console.log("App is listening at port", port);
 
 
-const server = app.listen(8001, () => {
+// setInterval(() => {
+//   getWeb3Data("BNB");
+
+// }, 10000);
+
+
+directLevelIncome();
+// cron.schedule("* * * *  *", async () => {
+//   try {
+//     await directLevelIncome();
+//     console.log("Direct Level Income Cron");
+
+//   } catch (err) {
+//     console.log("Error in cron", err);
+//   }
+// })
+
+const server = app.listen(8001, async () => {
   console.log("Server running!");
+  // await distributeReferralIncome("MEJ3875905", 5);
+
 });
