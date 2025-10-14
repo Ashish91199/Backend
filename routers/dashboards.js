@@ -108,7 +108,7 @@ router.get("/deposithistory/:id", async (req, res) => {
     const userId = req.params.id; // user ID from URL
     try {
         // Find deposits only for this user
-        const deposits = await DepositHistory.find({ userId: userId }).sort({ createdAt: -1 });
+        const deposits = await DepositHistory.find({ telegram: userId }).sort({ createdAt: -1 });
 
         res.status(200).json({
             status: "success",
