@@ -32,7 +32,6 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
   const referrerId = match[1] ? match[1].trim() : null;
 
   try {
-    if (!referrerId) return;
     let existingUser = await User.findOne({ telegram_id: chatId.toString() });
 
     if (existingUser) {
@@ -40,6 +39,12 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
       return;
     }
 
+    let refUser = await User.findOne({ telegram_id: referrerId.toString() });
+
+    if (!refUser) {
+      bot.sendMessage(chatId, `This referreal not found`);
+      return;
+    }
     // ✅ Generate unique user_id
     let newUserId;
     let isUnique = false;
@@ -54,8 +59,8 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
       user_id: newUserId,
       username: username,
       telegram_id: chatId.toString(),
-      referrer_id: existingUser.user_id,
-      referral_address: existingUser.user_id ? `Referral by ${existingUser.user_id}` : "No referral",
+      referrer_id: refUser.user_id,
+      referral_address: refUser.user_id ? `Referral by ${refUser.user_id}` : "No referral",
     });
 
     await newUser.save();
