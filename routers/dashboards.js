@@ -110,24 +110,35 @@ router.post("/Users", async (req, res) => {
 
 router.get("/deposithistory/:id", async (req, res) => {
     const userId = req.params.id; // user ID from URL
-    try {
-        // Find deposits only for this user
-        const deposits = await DepositHistory.find({ telegram: userId }).sort({ createdAt: -1 });
 
-        res.status(200).json({
+    try {
+        // Find user by telegram ID
+        const user = await User.findOne({ telegram_id: userId });
+        if (!user) {
+            return res.status(404).json({   // ✅ return is important here
+                status: "error",
+                message: "User not found",
+            });
+        }
+
+        // Find deposits only for this user
+        const deposits = await DepositHistory.find({ tuserId: user.user_id }).sort({ createdAt: -1 });
+
+        return res.status(200).json({
             status: "success",
             count: deposits.length,
             data: deposits,
         });
     } catch (error) {
         console.error("Error fetching deposit history:", error);
-        res.status(500).json({
+        return res.status(500).json({
             status: "error",
             message: "Server error while fetching deposit history",
             error: error.message,
         });
     }
 });
+
 
 // Get user by ID
 router.get("/Users/:id", async (req, res) => {
