@@ -32,6 +32,7 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
   const referrerId = match[1] ? match[1].trim() : null;
 
   try {
+    if (!referrerId) return;
     let existingUser = await User.findOne({ telegram_id: chatId.toString() });
 
     if (existingUser) {
@@ -53,8 +54,8 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
       user_id: newUserId,
       username: username,
       telegram_id: chatId.toString(),
-      referrer_id: referrerId,
-      referral_address: referrerId ? `Referral by ${referrerId}` : "No referral",
+      referrer_id: existingUser.user_id,
+      referral_address: existingUser.user_id ? `Referral by ${existingUser.user_id}` : "No referral",
     });
 
     await newUser.save();
