@@ -13,6 +13,10 @@ const router = express.Router();
 require("dotenv").config();
 const env = process.env;
 
+router.get("/ping", (req, res) => {
+    res.json({ success: true, message: "Server is running ✅" });
+})
+
 router.post("/telegram", async (req, res) => {
     const { message } = req.body; 0
 
