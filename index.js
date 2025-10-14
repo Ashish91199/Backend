@@ -85,7 +85,7 @@ app.use(
 );
 
 // app.use("/api", routes);
-app.use("/api/opnix/admin", adminlogin);
+app.use("/api", adminlogin);
 app.use("/api", dashboards);
 // app.use("/banner", express.static(path.join(__dirname, "/public/upload")));
 

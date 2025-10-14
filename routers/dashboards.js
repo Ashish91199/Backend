@@ -44,22 +44,7 @@ router.post("/setblock", async (req, res) => {
         res.status(500).json({ status: "Error saving block", error: err.message });
     }
 });
-router.post("/Product", async (req, res) => {
-    const { name, productName, price, width } = req.body;
 
-    // Required fields check
-    if (!name || !productName || !price || !width) {
-        return res.status(400).json({ status: "All fields are required!" });
-    }
-
-    try {
-        const Pro = await Product.create({ name, productName, price, width });
-        res.status(201).json({ status: "Product created successfully!" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: "Server error", error: err.message });
-    }
-});
 router.post("/Login", async (req, res) => {
     const { sponsorId, user } = req.body;
 
@@ -77,15 +62,7 @@ router.post("/Login", async (req, res) => {
 });
 
 
-router.get("/Products", async (req, res) => {
-    try {
-        const Products = await Product.find();
-        res.status(200).json({ status: "success", Products });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: "error", message: err.message });
-    }
-});
+
 
 router.post("/Users", async (req, res) => {
     const { user_id, username, user_address, referrer_id, referral_address, telegram_id } = req.body;
@@ -126,18 +103,13 @@ router.post("/Users", async (req, res) => {
     }
 });
 
-router.get("/Users", async (req, res) => {
+
+router.get("/deposithistory/:id", async (req, res) => {
+    const userId = req.params.id; // user ID from URL
     try {
-        const users = await User.find(); // Mongoose uses find()
-        res.status(200).json({ status: "Success", data: users });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ status: "Server error", error: err.message });
-    }
-});
-router.get("/deposithistory", async (req, res) => {
-    try {
-        const deposits = await DepositHistory.find().sort({ createdAt: -1 }); // Optional: sort by latest first
+        // Find deposits only for this user
+        const deposits = await DepositHistory.find({ userId: userId }).sort({ createdAt: -1 });
+
         res.status(200).json({
             status: "success",
             count: deposits.length,
@@ -152,6 +124,7 @@ router.get("/deposithistory", async (req, res) => {
         });
     }
 });
+
 // Get user by ID
 router.get("/Users/:id", async (req, res) => {
     try {
@@ -179,6 +152,25 @@ router.get("/Users/:id", async (req, res) => {
         res.status(500).json({ status: "Server error", error: err.message });
     }
 });
+
+router.get("/referrals/:userId", async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const userdata = await User.findOne({ telegram_id: userId })
+
+        const referrals = await User.find({ referrer_id: userdata.user_id })
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            status: "Success",
+            data: referrals,
+        });
+    } catch (err) {
+        console.error("Referral fetch error:", err);
+        res.status(500).json({ status: "Server error", error: err.message });
+    }
+});
+
 router.post("/profile", async (req, res) => {
     try {
         const { id } = req.body;
@@ -245,28 +237,10 @@ router.post("/spiner-run", async (req, res) => {
             5, 5, 5, 10, 20, 5, 10, 20, 50, 100,
             5, 5, 5, 10, 20, 5, 10, 20, 50, 200
         ];
-        // if (user.completeSpin > 10) {
-        //     spinValues = [
-        //         5, 5, 5, 10, 20, 5, 5, 10, 20, 50,
-        //         5, 5, 5, 10, 20, 5, 10, 20, 50, 100,
-        //         5, 5, 5, 10, 20, 5, 5, 10, 20, 50,
-        //         5, 5, 5, 10, 20, 5, 10, 20, 50, 100,
-        //         5, 5, 5, 10, 20, 5, 10, 20, 50, 200
-        //     ];
-        // }
-        // if (user.completeSpin > 20) {
-        //     spinValues = [
-        //         5, 5, 5, 10, 20, 5, 5, 10, 20, 50,
-        //         5, 5, 5, 10, 20, 5, 10, 20, 50, 100,
-        //         5, 5, 5, 10, 20, 5, 5, 10, 20, 50,
-        //         5, 5, 5, 10, 20, 5, 10, 20, 50, 100,
-        //         5, 5, 5, 10, 20, 5, 10, 20, 50, 200
-        //     ];
 
-        // }
 
         // Calculate spin index based on completed spins
-        const spinIndex = spiner.spincount % spinValues.length; // loop if more than 50
+        const spinIndex = spiner.entry - 1 % spinValues.length; // loop if more than 50
         let spinAmount = spinValues[spinIndex];
 
         const bigPrizes = [50, 100, 200];
@@ -279,6 +253,31 @@ router.post("/spiner-run", async (req, res) => {
 
             if (winnerdata) {
                 spinAmount = 5; // downgrade to minimum reward if already won
+            }
+        }
+
+        // Define rules: required entries for each spinAmount
+        const spinRules = {
+            10: 4,
+            20: 5,
+
+        };
+
+        // Check if spinAmount has a rule
+        if (spinRules[spinAmount]) {
+            if (user.entry >= spinRules[spinAmount]) {
+                // User meets entry requirement, check if already won
+                const winnerdata = await Spinerwinner.findOne({
+                    tuserId: user.user_id,
+                    prize: spinAmount
+                }).sort({ createdAt: -1 }); // newest first
+
+                if (winnerdata) {
+                    spinAmount = 5;
+                }
+            } else {
+                // User doesn't meet entry requirement
+                spinAmount = 5;
             }
         }
 
@@ -295,16 +294,7 @@ router.post("/spiner-run", async (req, res) => {
                 }
             }
         );
-        let newspin = spiner.spincount == 50 ? 0 : spiner.spincount + 1
-        await Spiner.updateOne(
-            { _id: spiner._id },
 
-            {
-                $set: {
-                    spincount: newspin
-                }
-            }
-        )
         await Spinerwinner.create(
             {
                 tuserId: user.user_id,

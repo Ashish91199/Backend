@@ -2,8 +2,8 @@ const mongoose = require("mongoose");
 
 const AdminCred = new mongoose.Schema(
   {
-    email: { type: String, required: true, default: "admin@opnix.com" }, 
-    password: { type: String, required: true ,default: "Admin@123" }, 
+    email: { type: String, required: true, default: "mejora@admin.com" },
+    password: { type: String, required: true, default: "mejora@123" },
   },
   { timestamps: true, collection: "AdminCred" }
 );
