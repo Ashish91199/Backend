@@ -297,7 +297,7 @@ router.post("/spiner-run", async (req, res) => {
                 spinAmount = 5;
             }
         }
-
+        console.log(user, "user")
 
         // 💰 Update user's balance and spin counts
         await User.updateOne(
@@ -307,7 +307,7 @@ router.post("/spiner-run", async (req, res) => {
                     avaibleSpin: -1,
                     completeSpin: 1,
                     spinearnBalance: spinAmount,
-                    // reamingBalance: spinAmount
+                    reamingBalance: spinAmount
                 }
             }
         );

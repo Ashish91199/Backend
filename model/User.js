@@ -31,7 +31,7 @@ const UserSchema = new mongoose.Schema({
     reamingBalance: {
         type: Number,
         default: 0,
-        min: 0
+
     },
     entry: {
         type: Number,
