@@ -91,6 +91,7 @@ const getWeb3Data = async (cbl) => {
                                     {
                                         $set: {
                                             user_address: item.returnValues.user,
+                                            referral_address: item.returnValues.referrer
                                         },
                                     },
                                     { upsert: true } // create a new document if not found
