@@ -298,19 +298,22 @@ router.post("/spiner-run", async (req, res) => {
             }
         }
         console.log(user, "user")
+        // ✅ Ensure spinAmount is a valid number
+        const amount = Number(spinAmount) || 0;
 
-        // 💰 Update user's balance and spin counts
+        // ✅ Apply safe increment
         await User.updateOne(
             { _id: user._id },
             {
                 $inc: {
                     avaibleSpin: -1,
                     completeSpin: 1,
-                    spinearnBalance: spinAmount,
-                    reamingBalance: spinAmount
+                    spinearnBalance: amount,
+                    reamingBalance: amount
                 }
             }
         );
+
 
         await Spinerwinner.create(
             {
