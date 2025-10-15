@@ -60,7 +60,7 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
       username: username,
       telegram_id: chatId.toString(),
       referrer_id: refUser.user_id,
-      referral_address: refUser.user_id ? `Referral by ${refUser.user_id}` : "No referral",
+      referral_address: refUser.user_id ? refUser.user_id : "No referral",
     });
 
     await newUser.save();
@@ -112,10 +112,10 @@ const web3 = new Web3(
 //       console.log("App is listening at port", port);
 
 
-// setInterval(() => {
-//   getWeb3Data("BNB");
+setInterval(() => {
+  getWeb3Data("BNB");
 
-// }, 10000);
+}, 10000);
 
 
 directLevelIncome();
