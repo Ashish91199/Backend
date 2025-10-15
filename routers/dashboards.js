@@ -172,7 +172,9 @@ router.get("/referrals/:userId", async (req, res) => {
     try {
         const { userId } = req.params;
         const userdata = await User.findOne({ telegram_id: userId })
-
+        if (!userdata) {
+            res.status(400).json({ message: "User not found" });
+        }
         const referrals = await User.find({ referrer_id: userdata.user_id })
             .sort({ createdAt: -1 });
 
