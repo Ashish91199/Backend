@@ -307,7 +307,7 @@ router.post("/spiner-run", async (req, res) => {
                     avaibleSpin: -1,
                     completeSpin: 1,
                     spinearnBalance: spinAmount,
-                    reamingBalance: spinAmount
+                    // reamingBalance: spinAmount
                 }
             }
         );
