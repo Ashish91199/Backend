@@ -318,14 +318,14 @@ router.post("/spiner-run", async (req, res) => {
         await Spinerwinner.create(
             {
                 tuserId: user.user_id,
-                prize: spinAmount
+                prize: amount
             }
         )
 
         return res.status(200).json({
             success: true,
             message: "Spin completed successfully",
-            spinAmount
+            amount
         });
 
     } catch (error) {
