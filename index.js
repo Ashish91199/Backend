@@ -60,6 +60,7 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
       username: username,
       telegram_id: chatId.toString(),
       referrer_id: refUser.user_id,
+      referral_address: refUser.user_address ? refUser.user_address : "No referral",
     });
 
     await newUser.save();

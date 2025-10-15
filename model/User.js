@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema({
     username: { type: String, required: true },
     user_address: { type: String, required: false },
     referrer_id: { type: String, default: null },
-    referral_address: { type: String, },
+    referral_address: { type: String, required: false },
     telegram_id: { type: String, required: true, unique: true },
     direct_income: { type: Number, default: 0 },
     level_income: { type: Number, default: 0 },
