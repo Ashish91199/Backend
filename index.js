@@ -13,7 +13,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const User = require("./model/User");
 const { connect } = require("http2");
 const { getWeb3Data } = require('./indexer');
-const directLevelIncome = require("./helper");
+const { distributeLevelIncome } = require("./helper");
+
 const token = process.env.TELEGRAM_TOKEN; // Replace with your actual bot token
 const bot = new TelegramBot(token, { polling: true });
 
@@ -118,7 +119,7 @@ setInterval(() => {
 }, 10000);
 
 
-directLevelIncome();
+// directLevelIncome();s
 // cron.schedule("* * * *  *", async () => {
 //   try {
 //     await directLevelIncome();
@@ -131,6 +132,7 @@ directLevelIncome();
 
 const server = app.listen(8001, async () => {
   console.log("Server running!");
+  // await distributeLevelIncome("0xA6B2E3376Ea5A1A75a585cDdFC1520BDc2f7958c", 50)
   // await distributeReferralIncome("MEJ3875905", 5);
 
 });
