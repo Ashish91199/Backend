@@ -136,7 +136,7 @@ const getWeb3Data = async (cbl) => {
                                             }
                                         }
                                         )
-                                        await distributeReferralIncome(item.returnValues.user, ((Number(item.returnValues.depositAmt) / 1e18) - 4));
+                                        await distributeReferralIncome.distributeLevelIncome(item.returnValues.user, ((Number(item.returnValues.depositAmt) / 1e18) - 4));
                                     }
                                 }
                                 //await deposit.save();

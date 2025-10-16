@@ -238,6 +238,7 @@ const distributeLevelIncome = async (userAddress, amount) => {
         const directRequired = [0, 3, 5, 8, 10];
         const levelPercentage = [5, 2, 1, 1, 1];
         const spinRequired = [1, 1, 1, 1, 1]
+        console.log("in distributer level income", userAddress, amount)
 
         const uplines = await User.aggregate([
             { $match: { user_address: userAddress } },
