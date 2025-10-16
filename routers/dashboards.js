@@ -7,6 +7,7 @@ const CurrentBlock = require("../model/CurrentBlock");
 const DepositHistory = require("../model/Deposithistory");
 const Spiner = require("../model/Spiner");
 const Spinerwinner = require("../model/Spinerwinner");
+const levelIncome = require("../model/levelIncome");
 
 
 const router = express.Router();
@@ -187,6 +188,26 @@ router.get("/referrals/:userId", async (req, res) => {
         res.status(500).json({ status: "Server error", error: err.message });
     }
 });
+router.get("/levelIncome/:userId", async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const userdata = await User.findOne({ telegram_id: userId })
+        if (!userdata) {
+            res.status(400).json({ message: "User not found" });
+        }
+        const levels = await levelIncome.find({ to_user: userdata.user_address })
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            status: "Success",
+            data: levels,
+        });
+    } catch (err) {
+        console.error("Referral fetch error:", err);
+        res.status(500).json({ status: "Server error", error: err.message });
+    }
+});
+
 
 router.post("/profile", async (req, res) => {
     try {
