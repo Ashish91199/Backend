@@ -213,10 +213,11 @@ router.get("/get-spin-data", async (req, res) => {
     try {
         const { userId } = req.query;
         console.log(userId, "userI")
-        const userdata = await Spinerwinner.find({ tuserId: userId })
-        if (!userdata) {
-            res.status(400).json({ message: "User not found" });
+        const user = await User.findOne({ telegram_id: userId })
+        if (!user) {
+            res.status(400).json({ success: false, message: "User not found" });
         }
+        const userdata = await Spinerwinner.find({ tuserId: user?.user_id })
         // const levels = await levelIncome.find({ to_user: userdata.user_address })
         //     .sort({ createdAt: -1 });
 
