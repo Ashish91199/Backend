@@ -169,9 +169,9 @@ router.get("/Users/:id", async (req, res) => {
     }
 });
 
-router.get("/referrals/:userId", async (req, res) => {
+router.get("/referrals", async (req, res) => {
     try {
-        const { userId } = req.params;
+        const { userId } = req.query;
         const userdata = await User.findOne({ telegram_id: userId })
         if (!userdata) {
             res.status(400).json({ message: "User not found" });
@@ -188,9 +188,10 @@ router.get("/referrals/:userId", async (req, res) => {
         res.status(500).json({ status: "Server error", error: err.message });
     }
 });
-router.get("/levelIncome/:userId", async (req, res) => {
+router.get("/levelIncome", async (req, res) => {
     try {
-        const { userId } = req.params;
+        const { userId } = req.query;
+        console.log(userId, "userI")
         const userdata = await User.findOne({ telegram_id: userId })
         if (!userdata) {
             res.status(400).json({ message: "User not found" });
@@ -199,12 +200,33 @@ router.get("/levelIncome/:userId", async (req, res) => {
             .sort({ createdAt: -1 });
 
         res.status(200).json({
-            status: "Success",
+            success: true,
             data: levels,
         });
     } catch (err) {
         console.error("Referral fetch error:", err);
-        res.status(500).json({ status: "Server error", error: err.message });
+        res.status(500).json({ success: false, status: "Server error", error: err.message });
+    }
+});
+
+router.get("/get-spin-data", async (req, res) => {
+    try {
+        const { userId } = req.query;
+        console.log(userId, "userI")
+        const userdata = await Spinerwinner.find({ tuserId: userId })
+        if (!userdata) {
+            res.status(400).json({ message: "User not found" });
+        }
+        // const levels = await levelIncome.find({ to_user: userdata.user_address })
+        //     .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            data: userdata,
+        });
+    } catch (err) {
+        console.error("Referral fetch error:", err);
+        res.status(500).json({ success: false, status: "Server error", error: err.message });
     }
 });
 

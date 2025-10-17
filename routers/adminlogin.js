@@ -78,6 +78,49 @@ router.get("/Users", async (req, res) => {
         });
     }
 });
+router.get("/deposit", async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search ? req.query.search.trim() : "";
+
+        const filter = search
+            ? {
+                $or: [
+                    { username: { $regex: search, $options: "i" } },
+                    { user_id: { $regex: search, $options: "i" } },
+                    { user_address: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+
+        const skip = (page - 1) * limit;
+
+        const users = await User.find(filter)
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: 1 });
+
+        const totalUsers = await User.countDocuments(filter);
+
+        // Response
+        return res.status(200).json({
+            status: "Success",
+            data: {
+                users,
+                totalUsers,
+                currentPage: page,
+                totalPages: Math.ceil(totalUsers / limit),
+            },
+        });
+    } catch (err) {
+        console.error("Error fetching users:", err);
+        res.status(500).json({
+            status: "Server error",
+            error: err.message,
+        });
+    }
+});
 
 
 
