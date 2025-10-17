@@ -169,9 +169,9 @@ router.get("/Users/:id", async (req, res) => {
     }
 });
 
-router.get("/referrals", async (req, res) => {
+router.get("/referrals/:userId", async (req, res) => {
     try {
-        const { userId } = req.query;
+        const { userId } = req.params;
         const userdata = await User.findOne({ telegram_id: userId })
         if (!userdata) {
             res.status(400).json({ message: "User not found" });
