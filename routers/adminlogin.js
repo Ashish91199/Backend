@@ -2,6 +2,8 @@ const AdminCred = require("../model/AdminCred");
 
 const express = require("express");
 const User = require("../model/User");
+const Deposithistory = require("../model/Deposithistory");
+const Spinerwinner = require("../model/Spinerwinner");
 const router = express.Router();
 
 
@@ -96,21 +98,30 @@ router.get("/deposit", async (req, res) => {
 
         const skip = (page - 1) * limit;
 
-        const users = await User.find(filter)
+        const deposit = await Deposithistory.find(filter)
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: 1 });
 
-        const totalUsers = await User.countDocuments(filter);
+        const totalDocs = await Deposithistory.countDocuments(filter);
+        const totalDeposits = await Deposithistory.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: { $toDouble: "$depositAmt" } }
+                }
+            }
+        ])
 
         // Response
         return res.status(200).json({
             status: "Success",
             data: {
-                users,
-                totalUsers,
+                deposit,
                 currentPage: page,
-                totalPages: Math.ceil(totalUsers / limit),
+                totalPages: Math.ceil(totalDocs / limit),
+                totalDeposits: totalDeposits[0].total || 0,
+                totalDocs
             },
         });
     } catch (err) {
@@ -122,7 +133,106 @@ router.get("/deposit", async (req, res) => {
     }
 });
 
+router.get("/totalSpinner", async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search ? req.query.search.trim() : "";
 
+        const filter = search
+            ? {
+                $or: [
+                    { tuserId: { $regex: search, $options: "i" } },
+                ],
+            }
+            : {};
+
+        const skip = (page - 1) * limit;
+
+        const spinner = await Spinerwinner.find(filter)
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: 1 });
+
+        const totalDocs = await Spinerwinner.countDocuments(filter);
+        const totalPrize = await Spinerwinner.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: "$prize" }
+                }
+            }
+        ])
+
+        // Response
+        return res.status(200).json({
+            status: "Success",
+            data: {
+                spinner,
+                currentPage: page,
+                totalPages: Math.ceil(totalDocs / limit),
+                totalPrize: totalPrize[0].total || 0,
+                totalDocs
+            },
+        });
+    } catch (err) {
+        console.error("Error fetching users:", err);
+        res.status(500).json({
+            status: "Server error",
+            error: err.message,
+        });
+    }
+});
+
+router.get("/dashboard-data", async (req, res) => {
+    try {
+        const [totalUser, totalDeposit, totalSpinner, totalWinnerSpinner,] = await Promise.all([
+            User.countDocuments(),
+            Deposithistory.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: { $toDouble: "$depositAmt" } }
+                    }
+                }
+            ]),
+            User.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: { $toDouble: "$avaibleSpin" } }
+                    }
+                }
+            ]),
+            User.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: { $toDouble: "$completeSpin" } }
+                    }
+                }
+
+            ]),
+
+
+        ])
+        return res.status(200).json({
+            status: "Success",
+            data: {
+                totalUser,
+                totalDeposit: totalDeposit[0].total || 0,
+                totalSpinner: totalSpinner[0].total || 0,
+                totalWinnerSpinner: totalWinnerSpinner[0].total || 0
+            },
+        });
+    } catch (err) {
+        console.error("Error fetching users:", err);
+        res.status(500).json({
+            status: "Server error",
+            error: err.message,
+        });
+    }
+});
 
 module.exports = router;
 
