@@ -8,6 +8,8 @@ const DepositHistory = require("../model/Deposithistory");
 const Spiner = require("../model/Spiner");
 const Spinerwinner = require("../model/Spinerwinner");
 const levelIncome = require("../model/levelIncome");
+const RankIncomeHistory = require("../model/Rank")
+
 
 
 const router = express.Router();
@@ -212,7 +214,7 @@ router.get("/RankIncome", async (req, res) => {
     try {
         const { user_id } = req.query;
 
-        const Ranks = await rankincomehistories.find({ user_id: user_id })
+        const Ranks = await RankIncomeHistory.find({ user_id: user_id })
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -220,7 +222,7 @@ router.get("/RankIncome", async (req, res) => {
             data: Ranks,
         });
     } catch (err) {
-        console.error("Referral fetch error:", err);
+        console.error("Rankincome fetch error:", err);
         res.status(500).json({ success: false, status: "Server error", error: err.message });
     }
 });
