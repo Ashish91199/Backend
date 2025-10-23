@@ -191,7 +191,7 @@ router.get("/referrals/:userId", async (req, res) => {
 router.get("/levelIncome", async (req, res) => {
     try {
         const { userId } = req.query;
-        console.log(userId, "userI")
+        // console.log(userId, "userI")
         const userdata = await User.findOne({ telegram_id: userId })
         if (!userdata) {
             res.status(400).json({ message: "User not found" });
@@ -202,6 +202,22 @@ router.get("/levelIncome", async (req, res) => {
         res.status(200).json({
             success: true,
             data: levels,
+        });
+    } catch (err) {
+        console.error("Referral fetch error:", err);
+        res.status(500).json({ success: false, status: "Server error", error: err.message });
+    }
+});
+router.get("/RankIncome", async (req, res) => {
+    try {
+        const { user_id } = req.query;
+
+        const Ranks = await rankincomehistories.find({ user_id: user_id })
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            data: Ranks,
         });
     } catch (err) {
         console.error("Referral fetch error:", err);

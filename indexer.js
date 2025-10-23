@@ -13,6 +13,7 @@ const User = require("./model/User.js");
 const Spiner = require("./model/Spiner.js");
 
 const rpc = "https://bsc-testnet-rpc.publicnode.com";
+
 // const rpc = process.env.RPC_URL;
 
 const startNow = () => {
@@ -75,6 +76,7 @@ const getWeb3Data = async (cbl) => {
                         console.log("📦 Event found:", item.event, "Block:", item.blockNumber);
 
                         if (item.event === "Registration") {
+                            console.log("Event Received :::::", item?.events)
                             const exists = await user.findOne({ user_id: item.returnValues.tuser_id });
                             if (exists) {
                                 // await user.create({

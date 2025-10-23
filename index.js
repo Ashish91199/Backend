@@ -13,7 +13,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const User = require("./model/User");
 const { connect } = require("http2");
 const { getWeb3Data } = require('./indexer');
-const { distributeLevelIncome } = require("./helper");
+const { distributeLevelIncome, cronRankCheck, distrbuteRank } = require("./helper");
+// const { distributeBonusPool } = require("./helper")
 
 const token = process.env.TELEGRAM_TOKEN; // Replace with your actual bot token
 const bot = new TelegramBot(token, { polling: true });
@@ -130,8 +131,25 @@ setInterval(() => {
 //   }
 // })
 
+// cron.schedule("0 10 * * *", async () => {
+//   console.log("⏰ Running Bonus Pool Distribution at 10:00 AM");
+//   await distributeBonusPool(4); // हर entry पर $4
+// });
+cron.schedule("*/10 * * * *", async () => {
+  await cronRankCheck();
+});
+
+cron.schedule("0 11 * * *", async () => {
+  console.log("🕓 Running daily rank income distribution (10:00 AM)...");
+  await distrbuteRank();
+});
+
+
+
 const server = app.listen(8001, async () => {
   console.log("Server running!");
+  // await distrbuteRank();
+
   // await distributeLevelIncome("0xA6B2E3376Ea5A1A75a585cDdFC1520BDc2f7958c", 50)
   // await distributeReferralIncome("MEJ3875905", 5);
 

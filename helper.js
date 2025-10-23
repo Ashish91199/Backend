@@ -1,8 +1,11 @@
+const Rank = require("./model/Rank");
+
 const mongoose = require("mongoose");
 const User = require("./model/User");
 const IncomeModel = require("./model/IncomeModel");
 const DepositHistory = require("./model/Deposithistory");
 const levelIncome = require("./model/levelIncome");
+const Deposithistory = require("./model/Deposithistory");
 
 
 
@@ -306,7 +309,63 @@ const distributeLevelIncome = async (userAddress, amount) => {
     }
 };
 
+const distributeBonusPool = async (amountPerEntry) => {
+    try {
+        console.log("Distributing Bonus Pool...");
 
+        // Bonus distribution percentage for each rank
+        const rankPercentages = { 1: 40, 2: 25, 3: 15, 4: 10, 5: 10 };
+
+
+
+        // Step 1: Calculate total bonus pool
+        const totalEntries = await Entry.countDocuments(); // suppose Entry is your spin entry model
+        const totalBonusPool = totalEntries * amountPerEntry; // $4 per entry
+
+        console.log(`Total Bonus Pool: ${totalBonusPool}`);
+
+        // Step 2: Distribute rank-wise
+        for (let rank = 1; rank <= 5; rank++) {
+            const rankUsers = await User.find({ rank: rank });
+            if (rankUsers.length === 0) continue;
+
+            const rankSharePercent = rankPercentages[rank];
+            const rankShare = (totalBonusPool * rankSharePercent) / 100;
+            const eachUserShare = rankShare / rankUsers.length;
+
+            console.log(
+                `Rank ${rank}: ${rankUsers.length} users | Total ${rankShare.toFixed(
+                    2
+                )} | Each ${eachUserShare.toFixed(2)}`
+            );
+
+            for (const user of rankUsers) {
+                await User.updateOne(
+                    { user_address: user.user_address },
+                    {
+                        $inc: {
+                            rank_income: eachUserShare,
+                            earning_balance: eachUserShare,
+                        },
+                    }
+                );
+
+                // ✅ Save Rank Bonus History
+                await RankIncome.create({
+                    user_address: user.user_address,
+                    rank: rank,
+                    amount: eachUserShare,
+                    total_pool: totalBonusPool,
+                    pool_percent: rankSharePercent,
+                });
+            }
+        }
+
+        console.log("✅ Bonus Pool distributed successfully!");
+    } catch (error) {
+        console.log("❌ Error in distributeBonusPool:", error);
+    }
+};
 
 async function getDirectReferral(userId) {
     try {
@@ -322,4 +381,234 @@ async function getDirectReferral(userId) {
 
 }
 
-module.exports = { distributeLevelIncome };
+
+const checkUserRank = async (user_id) => {
+    try {
+        const user = await User.findOne({ user_id });
+        if (!user) return console.log("❌ User not found");
+
+        const directs = await User.find({ referrer_id: user_id });
+        let newRank = user.rank || 0;
+
+        // 🥇 Rank 1: If any one direct has 5 directs
+        let hasQualifiedLeg = false;
+        for (const d of directs) {
+            const subDirects = await User.countDocuments({ referrer_id: d.user_id });
+            if (subDirects >= 5) {
+                hasQualifiedLeg = true;
+                break; // one leg is enough
+            }
+        }
+        if (hasQualifiedLeg) newRank = Math.max(newRank, 1);
+
+        // 🥈 Rank 2: Has 3 Rank1 in different legs
+        if (newRank >= 1) {
+            const rank1Count = directs.filter((d) => d.rank >= 1).length;
+            if (rank1Count >= 3) newRank = Math.max(newRank, 2);
+        }
+
+        // 🥉 Rank 3: Has 4 Rank2 in different legs
+        if (newRank >= 2) {
+            const teamData = await User.aggregate([
+                { $match: { user_id } },
+                {
+                    $graphLookup: {
+                        from: "users",
+                        startWith: "$user_id",
+                        connectFromField: "user_id",
+                        connectToField: "referrer_id",
+                        as: "team",
+                    },
+                },
+            ]);
+            const team = teamData[0]?.team || [];
+
+            let rank2Legs = 0;
+            for (const direct of directs) {
+                const hasRank2 = team.some(
+                    (member) => member.referrer_id === direct.user_id && member.rank >= 2
+                );
+                if (hasRank2) rank2Legs++;
+            }
+            if (rank2Legs >= 4) newRank = Math.max(newRank, 3);
+        }
+
+        // 🏅 Rank 4: Has 5 Rank3 in different legs
+        if (newRank >= 3) {
+            const teamData = await User.aggregate([
+                { $match: { user_id } },
+                {
+                    $graphLookup: {
+                        from: "users",
+                        startWith: "$user_id",
+                        connectFromField: "user_id",
+                        connectToField: "referrer_id",
+                        as: "team",
+                    },
+                },
+            ]);
+            const team = teamData[0]?.team || [];
+
+            let rank3Legs = 0;
+            for (const direct of directs) {
+                const hasRank3 = team.some(
+                    (member) => member.referrer_id === direct.user_id && member.rank >= 3
+                );
+                if (hasRank3) rank3Legs++;
+            }
+            if (rank3Legs >= 5) newRank = Math.max(newRank, 4);
+        }
+
+        // 🏆 Rank 5: Has 5 Rank4 in different legs
+        if (newRank >= 4) {
+            const teamData = await User.aggregate([
+                { $match: { user_id } },
+                {
+                    $graphLookup: {
+                        from: "users",
+                        startWith: "$user_id",
+                        connectFromField: "user_id",
+                        connectToField: "referrer_id",
+                        as: "team",
+                    },
+                },
+            ]);
+            const team = teamData[0]?.team || [];
+
+            let rank4Legs = 0;
+            for (const direct of directs) {
+                const hasRank4 = team.some(
+                    (member) => member.referrer_id === direct.user_id && member.rank >= 4
+                );
+                if (hasRank4) rank4Legs++;
+            }
+            if (rank4Legs >= 5) newRank = Math.max(newRank, 5);
+        }
+
+        // ✅ Update user rank only if increased
+        if (newRank > user.rank) {
+            await User.updateOne({ user_id }, { $set: { rank: newRank } });
+            console.log(`✅ Rank updated → Rank ${newRank} for user ${user_id}`);
+        } else if (newRank === user.rank) {
+            console.log(`ℹ️ No rank change (Rank ${user.rank}) for user ${user_id}`);
+        } else {
+            console.log(`⚠️ Rank decrease ignored (User ${user_id})`);
+        }
+
+    } catch (error) {
+        console.error("❌ Error checking rank:", error);
+    }
+};
+
+
+
+
+const cronRankCheck = async () => {
+    try {
+        console.log("🚀 Starting rank check cron job...");
+        const allUsers = await User.find({}, { user_id: 1, rank: 1 });
+
+        for (const user of allUsers) {
+            await checkUserRank(user.user_id);
+        }
+
+        console.log("✅ Rank check completed successfully!");
+    } catch (error) {
+        console.error("❌ Error in cronRankCheck:", error);
+    }
+};
+
+
+const distrbuteRank = async () => {
+    try {
+        const now = new Date();
+
+        // get yesterday’s start & end
+        const start = new Date(now);
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(now);
+        end.setDate(now.getDate() - 1);
+        end.setHours(23, 59, 59, 999);
+
+        console.log(`⏰ Fetching deposits from ${start} to ${end}`);
+
+        const deposits = await DepositHistory.find({
+            createdAt: { $gte: start, $lte: end },
+        });
+
+        const depositCount = deposits.length;
+
+        if (depositCount === 0) {
+            console.log("No deposits found for yesterday.");
+            return;
+        }
+
+        // 💰 total pool based on deposit count
+        const totalPool = depositCount * 4; // 4 per deposit
+        console.log(`💰 Total pool based on ${depositCount} deposits: ${totalPool}`);
+
+        // 🏦 Bonus pool by rank
+        const bonusPool = {
+            1: totalPool * 0.4,
+            2: totalPool * 0.25,
+            3: totalPool * 0.15,
+            4: totalPool * 0.1,
+            5: totalPool * 0.1,
+        };
+
+        console.log("🏦 Bonus Pool:", bonusPool);
+
+        // 🎖 Get users by rank
+        const ranks = await User.aggregate([
+            { $match: { rank: { $gte: 1 } } },
+            { $group: { _id: "$rank", users: { $push: "$user_id" }, count: { $sum: 1 } } },
+            { $sort: { _id: 1 } },
+        ]);
+
+        for (const r of ranks) {
+            const rankNum = r._id;
+            const users = r.users;
+            const count = r.count;
+
+            const pool = bonusPool[rankNum] || 0;
+            if (pool <= 0 || count === 0) continue;
+
+            const perUserBonus = pool / count;
+
+            console.log(
+                `🎖 Rank ${rankNum} → ${count} users, each gets ${perUserBonus.toFixed(2)}`
+            );
+
+            for (const userId of users) {
+                // update user
+                await User.updateOne(
+                    { user_id: userId },
+                    {
+                        $inc: {
+                            rankIncome: perUserBonus,
+                            earning_balance: perUserBonus,
+                        },
+                    }
+                );
+
+                // add to history
+                await Rank.create({
+                    user_id: userId,
+                    rank: rankNum,
+                    receivedAmount: perUserBonus,
+                    totalPoolAmount: pool,
+                    totalDepositAmount: totalPool
+                });
+            }
+        }
+
+        console.log("✅ Rank income distribution completed!");
+    } catch (error) {
+        console.error("❌ Error in distrbuteRank:", error);
+    }
+};
+
+
+module.exports = { distributeLevelIncome, checkUserRank, cronRankCheck, distrbuteRank };
