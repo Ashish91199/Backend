@@ -212,9 +212,13 @@ router.get("/levelIncome", async (req, res) => {
 });
 router.get("/RankIncome", async (req, res) => {
     try {
-        const { user_id } = req.query;
+        const { userId } = req.query;
+        const userrank = await User.findOne({ telegram_id: userId })
+        if (!userrank) {
+            res.status(400).json({ message: "User not found" });
+        }
 
-        const Ranks = await RankIncomeHistory.find({ user_id: user_id })
+        const Ranks = await RankIncomeHistory.find({ user_id: userrank.user_id })
             .sort({ createdAt: -1 });
 
         res.status(200).json({
