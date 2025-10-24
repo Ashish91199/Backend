@@ -212,8 +212,8 @@ router.get("/levelIncome", async (req, res) => {
 });
 router.get("/RankIncome", async (req, res) => {
     try {
-        const { userId } = req.query;
-        const userrank = await User.findOne({ telegram_id: userId })
+        const { user_id } = req.query;
+        const userrank = await User.findOne({ telegram_id: user_id })
         if (!userrank) {
             res.status(400).json({ message: "User not found" });
         }
