@@ -22,7 +22,7 @@ const bot = new TelegramBot(token, { polling: true });
 
 
 // ✅ Function: Generate Random User ID (MEJ + 7 digits)
-function generateUserId() {
+ function generateUserId() {
   const randomNum = Math.floor(1000000 + Math.random() * 9000000); // 7 digits
   return `MEJ${randomNum}`;
 }

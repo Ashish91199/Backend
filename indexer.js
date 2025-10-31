@@ -79,15 +79,7 @@ const getWeb3Data = async (cbl) => {
                             console.log("Event Received :::::", item?.events)
                             const exists = await user.findOne({ user_id: item.returnValues.tuser_id });
                             if (exists) {
-                                // await user.create({
-                                //     user: item.returnValues.user,
-                                //     referrer: item.returnValues.referrer,
-                                //     tuserId: item.returnValues.tuser_id,
-                                //     txnHash: item.transactionHash,
-                                //     blockNumber: item.blockNumber,
-                                //     type: "registration",
-                                // });
-
+                               
                                 await user.updateOne(
                                     { _id: exists._id }, // condition (find by user address)
                                     {
@@ -108,7 +100,7 @@ const getWeb3Data = async (cbl) => {
                             console.log("Deposit history check:", dexist);
 
                             if (!dexist) {
-                                const exists = await user.findOne({ user_id: item.returnValues.tuser_id });
+                                const exists = await user.findOne({ user_address: item.returnValues.user });
                                 if (exists) {
 
 

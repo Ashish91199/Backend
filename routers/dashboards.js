@@ -1,6 +1,5 @@
 const { default: axios } = require("axios");
 const express = require("express");
-const Product = require("../model/Product");
 const Login = require("../model/Login");
 const User = require("../model/User");
 const CurrentBlock = require("../model/CurrentBlock");
@@ -8,7 +7,8 @@ const DepositHistory = require("../model/Deposithistory");
 const Spiner = require("../model/Spiner");
 const Spinerwinner = require("../model/Spinerwinner");
 const levelIncome = require("../model/levelIncome");
-const RankIncomeHistory = require("../model/Rank")
+const RankIncomeHistory = require("../model/Rank");
+
 
 
 
@@ -116,7 +116,7 @@ router.get("/deposithistory/:id", async (req, res) => {
 
     try {
         // Find user by telegram ID
-        const user = await User.findOne({ telegram_id: userId });
+        const user = await User.findOne({ user_address: userId });
         if (!user) {
             return res.status(404).json({   // ✅ return is important here
                 status: "error",
@@ -125,7 +125,7 @@ router.get("/deposithistory/:id", async (req, res) => {
         }
 
         // Find deposits only for this user
-        const deposits = await DepositHistory.find({ tuserId: user.user_id }).sort({ createdAt: -1 });
+        const deposits = await DepositHistory.find({ user: userId}).sort({ createdAt: -1 });
 
         return res.status(200).json({
             status: "success",
@@ -156,7 +156,7 @@ router.get("/Users/:id", async (req, res) => {
 
         // Step 2: Find all users referred by this user
         const referrals = await User.find({ referrer_id: user.user_id })
-            .select("user_id username telegram_id createdAt");
+            .select("user_id username user createdAt");
 
         // Step 3: Combine both
         const result = {
@@ -171,30 +171,52 @@ router.get("/Users/:id", async (req, res) => {
     }
 });
 
+// routes/referral.js
 router.get("/referrals/:userId", async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const userdata = await User.findOne({ telegram_id: userId })
-        if (!userdata) {
-            res.status(400).json({ message: "User not found" });
-        }
-        const referrals = await User.find({ referrer_id: userdata.user_id })
-            .sort({ createdAt: -1 });
+  try {
+    const { userId } = req.params;               // e.g. 0xB5De...
 
-        res.status(200).json({
-            status: "Success",
-            data: referrals,
-        });
-    } catch (err) {
-        console.error("Referral fetch error:", err);
-        res.status(500).json({ status: "Server error", error: err.message });
-    }
+    const root = await User.findOne({ user_address: userId });
+    if (!root) return res.status(400).json({ message: "User not found" });
+
+    // ---------- RECURSIVE TREE BUILDER ----------
+    const buildTree = async (parentAddr, depth = 0, maxDepth = 6) => {
+      if (depth >= maxDepth) return [];
+
+      const children = await User.find({ referral_address: parentAddr })
+        .sort({ createdAt: -1 })
+        .lean();                              // <-- IMPORTANT
+
+      // Run recursion for every child **in parallel**
+      const childrenWithTree = await Promise.all(
+        children.map(async (child) => {
+          const sub = await buildTree(child.user_address, depth + 1, maxDepth);
+          return {
+            ...child,
+            level: depth + 1,                 // 1 = direct, 2 = level2, …
+            children: sub,
+          };
+        })
+      );
+
+      return childrenWithTree;
+    };
+    // -------------------------------------------
+
+    const tree = await buildTree(userId);
+
+    console.log(`Tree for ${userId} → levels:`, tree.length ? "1+" : "0");
+    res.json({ status: "Success", data: tree });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: "Error", error: err.message });
+  }
 });
 router.get("/levelIncome", async (req, res) => {
     try {
         const { userId } = req.query;
         // console.log(userId, "userI")
-        const userdata = await User.findOne({ telegram_id: userId })
+        const userdata = await User.findOne({ user_id: userId })
         if (!userdata) {
             res.status(400).json({ message: "User not found" });
         }
@@ -213,7 +235,7 @@ router.get("/levelIncome", async (req, res) => {
 router.get("/RankIncome", async (req, res) => {
     try {
         const { user_id } = req.query;
-        const userrank = await User.findOne({ telegram_id: user_id })
+        const userrank = await User.findOne({ user_id: user_id })
         if (!userrank) {
             res.status(400).json({ message: "User not found" });
         }
@@ -235,7 +257,7 @@ router.get("/get-spin-data", async (req, res) => {
     try {
         const { userId } = req.query;
         console.log(userId, "userI")
-        const user = await User.findOne({ telegram_id: userId })
+        const user = await User.findOne({ user_id: userId })
         if (!user) {
             res.status(400).json({ success: false, message: "User not found" });
         }
@@ -255,35 +277,48 @@ router.get("/get-spin-data", async (req, res) => {
 
 
 router.post("/profile", async (req, res) => {
-    try {
-        const { id } = req.body;
+  try {
+    const { id } = req.body;
+    console.log(id, "req id");
 
-        if (!id) {
-            return res.status(400).json({ success: false, message: "User ID is required" });
-        }
-
-        // Find user by MongoDB _id or custom user_id
-        const user = await User.findOne({ telegram_id: id }); // or use {_id: id} if you mean MongoDB's id
-
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "User profile fetched successfully",
-            data: user
-        });
-
-    } catch (error) {
-        console.error("Error fetching user profile:", error);
-        res.status(500).json({
-            success: false,
-            message: "Server error",
-            error: error.message
-        });
+    if (!id) {
+      return res.status(400).json({ success: false, message: "User ID or address is required" });
     }
+
+    // Prepare query parameters
+    let query = {};
+
+    // If id looks like a wallet address (starts with "0x" and length 42)
+    if (typeof id === "string" && id.startsWith("0x") && id.length === 42) {
+      query.user_address = id;
+    } 
+    // Otherwise, assume it's a Telegram ID or numeric ID
+    else {
+      query.telegram_id = id;
+    }
+
+    const user = await User.findOne(query);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User profile fetched successfully",
+      data: user,
+    });
+
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
 });
+
 
 
 router.post("/spiner-run", async (req, res) => {
@@ -295,7 +330,7 @@ router.post("/spiner-run", async (req, res) => {
         }
 
         // Find user by telegram_id
-        const user = await User.findOne({ telegram_id: id });
+        const user = await User.findOne({ user_address: id });
 
 
         const spiner = await Spiner.findOne({});
@@ -394,7 +429,116 @@ router.post("/spiner-run", async (req, res) => {
         return res.status(500).json({ success: false, message: "Server error" });
     }
 });
+ function generateUserId() {
+  const randomNum = Math.floor(1000000 + Math.random() * 9000000); // 7 digits
+  return `MEJ${randomNum}`;
+}
+router.post("/register", async (req, res) => {
+  try {
+    const { walletAddress, referral_address } = req.body;
 
+    if (!walletAddress) {
+      return res.status(400).json({
+        status: false,
+        message: "Wallet address is required",
+      });
+    }
 
+    const normalizedWallet = walletAddress
+
+    // ✅ Check if wallet already exists
+    const existingUser = await User.findOne({ user_address: normalizedWallet });
+    if (existingUser) {
+      return res.status(200).json({
+        status: false,
+        message: "User already registered",
+        user: existingUser,
+      });
+    }
+
+    // ✅ Check for referral validity
+    let refUser = null;
+    if (referral_address) {
+      const normalizedReferral = referral_address;
+      refUser = await User.findOne({ user_address: normalizedReferral });
+      if (!refUser) {
+        return res.status(400).json({
+          status: false,
+          message: "Invalid referral address",
+        });
+      }
+    }
+
+    // ✅ Generate unique user_id
+    let newUserId;
+    let isUnique = false;
+    while (!isUnique) {
+      newUserId = generateUserId();
+      const check = await User.findOne({ user_id: newUserId });
+      if (!check) isUnique = true;
+    }
+
+    // ✅ Create new user
+    const newUser = new User({
+      user_id: newUserId,
+      username: "Wallet User",
+      telegram_id: newUserId, // optional
+      user_address: normalizedWallet,
+      referrer_id: refUser ? refUser.user_id : null,
+      referral_address: refUser ? refUser.user_address : null,
+      createdAt: new Date(),
+    });
+
+    await newUser.save();
+
+    return res.status(200).json({
+      status: true,
+      message: "User registered successfully",
+      user: newUser,
+    });
+  } catch (error) {
+    console.error("Error in register API:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+  
+router.post("/getUserData", async (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "Wallet address is required",
+      });
+    }
+
+    const user = await User.findOne({ user_address: walletAddress });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (err) {
+    console.error("Referral fetch error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
+  }
+});
 
 module.exports = router;
