@@ -216,11 +216,11 @@ router.get("/levelIncome", async (req, res) => {
     try {
         const { userId } = req.query;
         // console.log(userId, "userI")
-        const userdata = await User.findOne({ user_id: userId })
+        const userdata = await User.findOne({ user_address: userId })
         if (!userdata) {
             res.status(400).json({ message: "User not found" });
         }
-        const levels = await levelIncome.find({ to_user: userdata.user_address })
+        const levels = await levelIncome.find({ to_user: userId })
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -235,12 +235,12 @@ router.get("/levelIncome", async (req, res) => {
 router.get("/RankIncome", async (req, res) => {
     try {
         const { user_id } = req.query;
-        const userrank = await User.findOne({ user_id: user_id })
+        const userrank = await User.findOne({ user_address: user_id })
         if (!userrank) {
             res.status(400).json({ message: "User not found" });
         }
 
-        const Ranks = await RankIncomeHistory.find({ user_id: userrank.user_id })
+        const Ranks = await RankIncomeHistory.find({ user:userrank.user_id })
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -257,7 +257,7 @@ router.get("/get-spin-data", async (req, res) => {
     try {
         const { userId } = req.query;
         console.log(userId, "userI")
-        const user = await User.findOne({ user_id: userId })
+        const user = await User.findOne({ user_address: userId })
         if (!user) {
             res.status(400).json({ success: false, message: "User not found" });
         }
