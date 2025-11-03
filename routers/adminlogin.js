@@ -4,6 +4,7 @@ const express = require("express");
 const User = require("../model/User");
 const Deposithistory = require("../model/Deposithistory");
 const Spinerwinner = require("../model/Spinerwinner");
+const levelIncome = require("../model/levelIncome");
 const router = express.Router();
 
 
@@ -186,7 +187,7 @@ router.get("/totalSpinner", async (req, res) => {
 
 router.get("/dashboard-data", async (req, res) => {
     try {
-        const [totalUser, totalDeposit, totalSpinner, totalWinnerSpinner, spinnerWinnerData] = await Promise.all([
+        const [totalUser, totalDeposit, totalSpinner, totalWinnerSpinner, spinnerWinnerData, levelIncomedata] = await Promise.all([
             User.countDocuments(),
             Deposithistory.aggregate([
                 {
@@ -223,6 +224,15 @@ router.get("/dashboard-data", async (req, res) => {
                 }
 
             ]),
+            levelIncome.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: { $toDouble: "$amount" } }
+                    }
+                }
+
+            ]),
 
 
 
@@ -236,6 +246,7 @@ router.get("/dashboard-data", async (req, res) => {
                 totalSpinner: totalSpinner[0].total || 0,
                 totalWinnerSpinner: totalWinnerSpinner[0].total || 0,
                 Spinerwinner: spinnerWinnerData[0]?.total || 0,
+                levelIncome: levelIncomedata[0]?.total || 0,
 
             },
         });
