@@ -214,7 +214,7 @@ router.get("/dashboard-data", async (req, res) => {
 
             ]),
 
-            SpinnerWinner.aggregate([
+            Spinerwinner.aggregate([
                 {
                     $group: {
                         _id: null,
@@ -235,7 +235,7 @@ router.get("/dashboard-data", async (req, res) => {
                 totalDeposit: totalDeposit[0].total || 0,
                 totalSpinner: totalSpinner[0].total || 0,
                 totalWinnerSpinner: totalWinnerSpinner[0].total || 0,
-                SpinnerWinner: spinnerWinnerData[0]?.total || 0,
+                Spinerwinner: spinnerWinnerData[0]?.total || 0,
 
             },
         });
