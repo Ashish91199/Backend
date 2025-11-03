@@ -186,7 +186,7 @@ router.get("/totalSpinner", async (req, res) => {
 
 router.get("/dashboard-data", async (req, res) => {
     try {
-        const [totalUser, totalDeposit, totalSpinner, totalWinnerSpinner,] = await Promise.all([
+        const [totalUser, totalDeposit, totalSpinner, totalWinnerSpinner, SpinnerWinner] = await Promise.all([
             User.countDocuments(),
             Deposithistory.aggregate([
                 {
@@ -214,15 +214,28 @@ router.get("/dashboard-data", async (req, res) => {
 
             ]),
 
+            SpinnerWinner.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: { $toDouble: "$prize" } }
+                    }
+                }
+
+            ]),
+
+
 
         ])
         return res.status(200).json({
             status: "Success",
             data: {
                 totalUser,
+                companymargin: totalUser * 5,
                 totalDeposit: totalDeposit[0].total || 0,
                 totalSpinner: totalSpinner[0].total || 0,
-                totalWinnerSpinner: totalWinnerSpinner[0].total || 0
+                totalWinnerSpinner: totalWinnerSpinner[0].total || 0,
+                SpinnerWinner: SpinnerWinner[0].total || 0
             },
         });
     } catch (err) {
