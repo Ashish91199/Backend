@@ -318,9 +318,6 @@ router.post("/profile", async (req, res) => {
     });
   }
 });
-
-
-
 router.post("/spiner-run", async (req, res) => {
   try {
     const { id } = req.body;
