@@ -324,31 +324,19 @@ router.post("/profile", async (req, res) => {
 router.post("/spiner-run", async (req, res) => {
   try {
     const { id } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: "User ID is required" });
 
-    if (!id) {
-      return res.status(400).json({ success: false, message: "User ID is required" });
-    }
-
-    // Find user by telegram_id
     const user = await User.findOne({ user_address: id });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+    if (user.avaibleSpin <= 0)
+      return res.status(400).json({ success: false, message: "No available spins" });
 
-    const spiner = await Spiner.findOne({});
+    // 📈 Global spin tracker
+    let spiner = await Spiner.findOne({});
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    // Check if user has available spins
-    if (user.avaibleSpin <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "You don't have any available spins"
-      });
-    }
-
-    // 🎯 Spin value array (no negatives, blanks replaced with 5)
-    let spinValues = [
+    // 🎯 Spin pattern
+    const spinValues = [
       5, 5, 5, 10, 20, 5, 5, 10, 20, 50,
       5, 5, 5, 10, 20, 5, 10, 20, 50, 100,
       5, 5, 5, 10, 20, 5, 5, 10, 20, 50,
@@ -356,49 +344,52 @@ router.post("/spiner-run", async (req, res) => {
       5, 5, 5, 10, 20, 5, 10, 20, 50, 200
     ];
 
-
-    // Calculate spin index based on completed spins
-    const spinIndex = spiner.entry - 1 % spinValues.length; // loop if more than 50
+    // 🔢 Determine spin index based on total spins
+    const spinIndex = spiner.entry % spinValues.length;
     let spinAmount = spinValues[spinIndex];
 
-    const bigPrizes = [50, 100, 200];
+    // 🥇 Rule 1: first spin always 5
+    if (user.completeSpin === 0) {
+      spinAmount = 5;
+    } else {
+      // 🎯 Rule 2: global limits
+      const scale = Math.max(1, Math.floor(spiner.entry / 50));
+      // Every 500 spins, increase limits ×1
+      const bigPrizeLimits = {
+        10: 10 * scale,
+        20: 10 * scale,
+        50: 5 * scale,
+        100: 2 * scale,
+        200: 1 * scale,
+      };
+      if (bigPrizeLimits[spinAmount]) {
+        const totalWins = await Spinerwinner.countDocuments({ prize: spinAmount });
+        if (totalWins >= bigPrizeLimits[spinAmount]) {
+          spinAmount = 5; // downgrade when global limit reached
+        }
+      }
 
-    if (bigPrizes.includes(spinAmount)) {
-      const winnerdata = await Spinerwinner.findOne({
+      // 🚫 Rule 3: prevent user from repeating big wins
+      const alreadyBigWin = await Spinerwinner.findOne({
         tuserId: user.user_id,
-        prize: spinAmount
+        prize: { $in: [10, 20, 50, 100, 200] },
       });
 
-      if (winnerdata) {
-        spinAmount = 5; // downgrade to minimum reward if already won
+      if (alreadyBigWin && [10, 20, 50, 100, 200].includes(spinAmount)) {
+        spinAmount = 5; // user already won a big prize once
       }
     }
 
-    // Define rules: required entries for each spinAmount
-    const spinRules = {
-      10: 4,
-      20: 5,
+    // 💰 Rule 4: company-safe (limit based on deposit)
+    const deposit = (user.deposit_balance || 0) / 1e18;
+    const earned = user.spinearnBalance || 0;
+    const remainingLimit = deposit - earned;
 
-    };
-
-    // Check if spinAmount has a rule
-    if (spinRules[spinAmount]) {
-      if (user.entry >= spinRules[spinAmount]) {
-        // User meets entry requirement, check if already won
-        const winnerdata = await Spinerwinner.findOne({
-          tuserId: user.user_id,
-          prize: spinAmount
-        }).sort({ createdAt: -1 }); // newest first
-
-        if (winnerdata) {
-          spinAmount = 5;
-        }
-      } else {
-        // User doesn't meet entry requirement
-        spinAmount = 5;
-      }
+    if (spinAmount > remainingLimit) {
+      spinAmount = 5;
     }
-    // 💰 Update user's balance and spin counts
+
+    // ✅ Update user
     await User.updateOne(
       { _id: user._id },
       {
@@ -406,29 +397,29 @@ router.post("/spiner-run", async (req, res) => {
           avaibleSpin: -1,
           completeSpin: 1,
           spinearnBalance: spinAmount,
-          reamingBalance: spinAmount
-        }
+          reamingBalance: spinAmount,
+        },
       }
     );
 
-    await Spinerwinner.create(
-      {
-        tuserId: user.user_id,
-        prize: spinAmount
-      }
-    )
+    // 🏅 Save spin result
+    await Spinerwinner.create({
+      tuserId: user.user_id,
+      prize: spinAmount,
+    });
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Spin completed successfully",
-      spinAmount
+      spinAmount,
     });
 
   } catch (error) {
     console.error("Error in /spiner-run:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
 function generateUserId() {
   const randomNum = Math.floor(1000000 + Math.random() * 9000000); // 7 digits
   return `MEJ${randomNum}`;
