@@ -345,46 +345,42 @@ router.post("/spiner-run", async (req, res) => {
     const spinIndex = spiner.entry % spinValues.length;
     let spinAmount = spinValues[spinIndex];
 
-    // 🥇 Rule 1: first spin always 5
-    if (user.completeSpin === 0) {
-      spinAmount = 5;
-    } else {
-      // 🎯 Rule 2: global limits
-      const scale = Math.max(1, Math.floor(spiner.entry / 50));
-      // Every 500 spins, increase limits ×1
-      const bigPrizeLimits = {
-        10: 10 * scale,
-        20: 10 * scale,
-        50: 5 * scale,
-        100: 2 * scale,
-        200: 1 * scale,
-      };
-      if (bigPrizeLimits[spinAmount]) {
-        const totalWins = await Spinerwinner.countDocuments({ prize: spinAmount });
-        if (totalWins >= bigPrizeLimits[spinAmount]) {
-          spinAmount = 5; // downgrade when global limit reached
-        }
-      }
-
-      // 🚫 Rule 3: prevent user from repeating big wins
-      const alreadyBigWin = await Spinerwinner.findOne({
-        tuserId: user.user_id,
-        prize: { $in: [10, 20, 50, 100, 200] },
-      });
-
-      if (alreadyBigWin && [10, 20, 50, 100, 200].includes(spinAmount)) {
-        spinAmount = 5; // user already won a big prize once
+    // 🎯 Rule 2: global limits
+    const scale = Math.max(1, Math.floor(spiner.entry / 50));
+    // Every 500 spins, increase limits ×1
+    const bigPrizeLimits = {
+      10: 10 * scale,
+      20: 10 * scale,
+      50: 5 * scale,
+      100: 2 * scale,
+      200: 1 * scale,
+    };
+    if (bigPrizeLimits[spinAmount]) {
+      const totalWins = await Spinerwinner.countDocuments({ prize: spinAmount });
+      if (totalWins >= bigPrizeLimits[spinAmount]) {
+        spinAmount = 5; // downgrade when global limit reached
       }
     }
 
-    // 💰 Rule 4: company-safe (limit based on deposit)
-    const deposit = (user.deposit_balance || 0) / 1e18;
-    const earned = user.spinearnBalance || 0;
-    const remainingLimit = deposit - earned;
+    // 🚫 Rule 3: prevent user from repeating big wins
+    const alreadyBigWin = await Spinerwinner.findOne({
+      tuserId: user.user_id,
+      prize: { $in: [10, 20, 50, 100, 200] },
+    });
 
-    if (spinAmount > remainingLimit) {
-      spinAmount = 5;
+    if (alreadyBigWin && [10, 20, 50, 100, 200].includes(spinAmount)) {
+      spinAmount = 5; // user already won a big prize once
     }
+
+
+    // // 💰 Rule 4: company-safe (limit based on deposit)
+    // const deposit = (user.deposit_balance || 0) / 1e18;
+    // const earned = user.spinearnBalance || 0;
+    // const remainingLimit = deposit - earned;
+
+    // if (spinAmount > remainingLimit) {
+    //   spinAmount = 5;
+    // }
 
     // ✅ Update user
     await User.updateOne(
