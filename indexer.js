@@ -79,7 +79,7 @@ const getWeb3Data = async (cbl) => {
                             console.log("Event Received :::::", item?.events)
                             const exists = await user.findOne({ user_id: item.returnValues.tuser_id });
                             if (exists) {
-                               
+
                                 await user.updateOne(
                                     { _id: exists._id }, // condition (find by user address)
                                     {
@@ -118,8 +118,10 @@ const getWeb3Data = async (cbl) => {
                                                 $inc: {
                                                     deposit_balance: item.returnValues.depositAmt,
                                                     avaibleSpin: 4,
-                                                    entry: 1
-                                                }
+                                                    entry: 1,
+
+                                                },
+                                                $set: { status: true }
                                             },
                                             { upsert: true }
                                         )
