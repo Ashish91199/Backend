@@ -35,6 +35,7 @@ const UserSchema = new mongoose.Schema({
     },
     entry: {
         type: Number,
+        default: 0,
 
     },
     rank: {
@@ -45,10 +46,7 @@ const UserSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    status: {
-        type: Boolean,
-        default: false
-    }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", UserSchema);

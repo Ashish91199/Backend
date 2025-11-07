@@ -121,7 +121,7 @@ const getWeb3Data = async (cbl) => {
                                                     entry: 1,
 
                                                 },
-                                                $set: { status: true }
+
                                             },
                                             { upsert: true }
                                         )
