@@ -391,6 +391,7 @@ router.post("/spiner-run", async (req, res) => {
           completeSpin: 1,
           spinearnBalance: spinAmount,
           reamingBalance: spinAmount,
+          earning_balance: spinAmount,
         },
       }
     );
