@@ -5,6 +5,7 @@ const User = require("../model/User");
 const Deposithistory = require("../model/Deposithistory");
 const Spinerwinner = require("../model/Spinerwinner");
 const levelIncome = require("../model/levelIncome");
+const RankIncomeHistory = require("../model/Rank")
 const router = express.Router();
 
 
@@ -187,7 +188,7 @@ router.get("/totalSpinner", async (req, res) => {
 
 router.get("/dashboard-data", async (req, res) => {
     try {
-        const [totalactiveuser, totalinactiveuser, totalentry, totalDeposit, totalSpinner, totalWinnerSpinner, spinnerWinnerData, levelIncomedata] = await Promise.all([
+        const [totalactiveuser, totalinactiveuser, totalentry, totalDeposit, totalSpinner, totalWinnerSpinner, spinnerWinnerData, levelIncomedata, rankIncomeData] = await Promise.all([
             User.countDocuments({ entry: { $gt: 0 } }),
             User.countDocuments({ entry: 0 }),
 
@@ -237,6 +238,15 @@ router.get("/dashboard-data", async (req, res) => {
                 }
 
             ]),
+            RankIncomeHistory.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: { $toDouble: "$receivedAmount" } }
+                    }
+                }
+
+            ]),
 
 
 
@@ -254,6 +264,7 @@ router.get("/dashboard-data", async (req, res) => {
                 totalWinnerSpinner: totalWinnerSpinner[0].total || 0,
                 Spinerwinner: spinnerWinnerData[0]?.total || 0,
                 levelIncome: levelIncomedata[0]?.total || 0,
+                rankIncome: rankIncomeData[0]?.total || 0,
 
             },
         });
