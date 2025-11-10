@@ -8,8 +8,16 @@ const Spiner = require("../model/Spiner");
 const Spinerwinner = require("../model/Spinerwinner");
 const levelIncome = require("../model/levelIncome");
 const RankIncomeHistory = require("../model/Rank");
+const { processWithdrawal } = require("../helper");
 
+const AsyncLock = require("async-lock");
 
+const lock = new AsyncLock();
+const Web3 = require("web3");
+const { contractAddressABI, contractAddress } = require("../config");
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.RPC_URL));
+
+const ContractAddress = new web3.eth.Contract(contractAddressABI, contractAddress);
 
 
 const router = express.Router();
@@ -523,6 +531,67 @@ router.post("/getUserData", async (req, res) => {
       message: "Server error",
       error: err.message,
     });
+  }
+});
+
+
+
+router.post("/withdraw", async (req, res) => {
+
+  const { walletAddress, amount } = req.body;
+  console.log(walletAddress, amount, "walletAddress, amount");
+
+  if (!walletAddress || !amount) {
+    return res.status(400).json({ success: false, message: "Invalid input" });
+  }
+  const deadline = Math.floor(((new Date().getTime())/1000) + 5 * 60); // 5 min from now
+
+  try {
+    // Locking the walletAddress to prevent concurrent modifications
+    await lock.acquire(walletAddress, async () => {
+
+
+      // ✅ Calculate 10% charge
+      const fee = amount * 0.10;
+      const netAmount = amount - fee;
+
+      console.log(`Original Amount: $${amount}, Fee: $${fee}, Net Withdrawal: $${netAmount}`);
+
+      // Generate hash and process withdrawal using net amount
+      const randomHash = await ContractAddress.methods
+        .getWithdrawHash(walletAddress, (web3.utils.toWei(netAmount.toString(), "ether")), deadline)
+        .call();
+      console.log("randomHash::::", randomHash);
+      const vrsSign = await processWithdrawal(walletAddress, randomHash, netAmount);
+
+      const fData = await User.findOne({ user_address: walletAddress });
+      // console.log(fData, "fData:::");
+      if (!fData) {
+        throw { status: 404, message: "User not found" };
+      }
+
+      if (fData.earning_balance < 10) {
+        throw { status: 200, success: false, message: "amount must be greater than $10" };
+      }
+      if ((fData.earning_balance + 0.2) < amount) {
+        throw { status: 200, success: false, message: "Insufficient balance" };
+      }
+      return res.status(200).json({
+        success: true,
+        message: "Withdrawal Request Processed Successfully",
+        fee: fee.toFixed(2),
+        netAmount: netAmount.toFixed(2),
+        vrsSign,
+        deadline,
+        user_id: fData.user_id
+      });
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
+    }
+    console.error("Withdrawal error:", error.stack || error);
+    return res.status(500).json({ success: false, message: "Server error. Please try again later." });
   }
 });
 

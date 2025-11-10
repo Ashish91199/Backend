@@ -11,6 +11,7 @@ const { contractAddress, contractAddressABI, contractToken, contractTokenABI } =
 const distributeReferralIncome = require("./helper.js");
 const User = require("./model/User.js");
 const Spiner = require("./model/Spiner.js");
+const withdrawReward = require("./model/withdrawReward.js");
 
 const rpc = "https://opbnb-testnet-rpc.publicnode.com/";
 
@@ -140,8 +141,44 @@ const getWeb3Data = async (cbl) => {
                                 console.log("✅ Deposit saved:", item.transactionHash);
                             }
                         }
+                        if (item.event === "Withdrawal") {
+                            const key = `${item.transactionHash}${item.returnValues.time}${item.blockNumber}`;
+                            const transactionHash = item.transactionHash;
+                            const exists = await withdraw.findOne({ transactionHash });
 
+                            if (!exists) {
+                                const amount = Number(item.returnValues.amount) / 1e18;
 
+                                await withdrawReward
+                                    .create({
+                                        key,
+                                        id: item.returnValues.id,
+                                        amount,
+                                        userAddress: item.returnValues.userAddress,
+                                        nonce: item.returnValues.nonce,
+                                        transactionHash: item.transactionHash,
+                                        blockNumber: item.blockNumber,
+                                        time: item.returnValues.time || item.returnValues.timestamp,
+                                    })
+                                    .then(async () => {
+                                        console.log("Withdraw inserted");
+
+                                        await User.findOneAndUpdate(
+                                            { user_address: item.returnValues.userAddress },
+                                            {
+                                                $inc: {
+                                                    earning_balance: -amount, // subtract from earning balance
+                                                    total_claim: amount,      // add to total claim
+                                                },
+                                            },
+                                            { new: true }
+                                        );
+                                    })
+                                    .catch((err) => console.error("Withdraw insert error:", err));
+                            } else {
+                                console.log("Duplicate WithdrawFund event ignored");
+                            }
+                        }
 
                     }
                 } else {
