@@ -114,10 +114,10 @@ const web3 = new Web3(
 //       console.log("App is listening at port", port);
 
 
-// setInterval(() => {
-//   getWeb3Data("BNB");
+setInterval(() => {
+  getWeb3Data("BNB");
 
-// }, 10000);
+}, 10000);
 
 
 // directLevelIncome();s
@@ -135,14 +135,14 @@ const web3 = new Web3(
 //   console.log("⏰ Running Bonus Pool Distribution at 10:00 AM");
 //   await distributeBonusPool(4); // हर entry पर $4
 // });
-// cron.schedule("*/10 * * * *", async () => {
-//   await cronRankCheck();
-// });
+cron.schedule("*/10 * * * *", async () => {
+  await cronRankCheck();
+});
 
-// cron.schedule("0 11 * * *", async () => {
-//   console.log("🕓 Running daily rank income distribution (10:00 AM)...");
-//   await distrbuteRank();
-// });
+cron.schedule("0 11 * * *", async () => {
+  console.log("🕓 Running daily rank income distribution (10:00 AM)...");
+  await distrbuteRank();
+});
 
 
 
