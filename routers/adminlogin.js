@@ -140,21 +140,41 @@ router.get("/totalSpinner", async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const search = req.query.search ? req.query.search.trim() : "";
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
 
-        const match = search
-            ? { tuserId: { $regex: search, $options: "i" } }
-            : {};
+        const match = {};
+
+        // 🔹 Apply search filter
+        if (search) {
+            match.tuserId = { $regex: search, $options: "i" };
+        }
+
+        // 🔹 Apply date range filter (if provided)
+        if (startDate && endDate) {
+            match.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+            };
+        } else if (startDate) {
+            match.createdAt = { $gte: new Date(startDate) };
+        } else if (endDate) {
+            match.createdAt = {
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+            };
+        }
 
         const skip = (page - 1) * limit;
 
+        // 🔹 Grouped and paginated
         const groupedData = await Spinerwinner.aggregate([
             { $match: match },
             {
                 $group: {
                     _id: "$tuserId",
-                    totalSpins: { $sum: 1 },
-                    totalPrize: { $sum: "$prize" },
                     spins: { $push: "$$ROOT" },
+                    totalPrize: { $sum: "$prize" },
+                    totalSpins: { $sum: 1 },
                 },
             },
             { $sort: { "_id": 1 } },
@@ -163,18 +183,27 @@ router.get("/totalSpinner", async (req, res) => {
         ]);
 
         const totalUsers = await Spinerwinner.distinct("tuserId", match);
-        const overallPrize = await Spinerwinner.aggregate([
+
+        // 🔹 Filtered total stats
+        const filteredTotals = await Spinerwinner.aggregate([
             { $match: match },
-            { $group: { _id: null, total: { $sum: "$prize" } } },
+            {
+                $group: {
+                    _id: null,
+                    totalPrize: { $sum: "$prize" },
+                    totalSpins: { $sum: 1 },
+                },
+            },
         ]);
 
-        res.status(200).json({
+        return res.status(200).json({
             status: "Success",
             data: {
                 users: groupedData,
                 totalUsers: totalUsers.length,
                 totalPages: Math.ceil(totalUsers.length / limit),
-                overallPrize: overallPrize[0]?.total || 0,
+                totalPrize: filteredTotals[0]?.totalPrize || 0,
+                totalSpins: filteredTotals[0]?.totalSpins || 0,
             },
         });
     } catch (err) {
