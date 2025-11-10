@@ -141,50 +141,51 @@ router.get("/totalSpinner", async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const search = req.query.search ? req.query.search.trim() : "";
 
-        const filter = search
-            ? {
-                $or: [
-                    { tuserId: { $regex: search, $options: "i" } },
-                ],
-            }
+        const match = search
+            ? { tuserId: { $regex: search, $options: "i" } }
             : {};
 
         const skip = (page - 1) * limit;
 
-        const spinner = await Spinerwinner.find(filter)
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: 1 });
-
-        const totalDocs = await Spinerwinner.countDocuments(filter);
-        const totalPrize = await Spinerwinner.aggregate([
+        const groupedData = await Spinerwinner.aggregate([
+            { $match: match },
             {
                 $group: {
-                    _id: null,
-                    total: { $sum: "$prize" }
-                }
-            }
-        ])
+                    _id: "$tuserId",
+                    totalSpins: { $sum: 1 },
+                    totalPrize: { $sum: "$prize" },
+                    spins: { $push: "$$ROOT" },
+                },
+            },
+            { $sort: { "_id": 1 } },
+            { $skip: skip },
+            { $limit: limit },
+        ]);
 
-        // Response
-        return res.status(200).json({
+        const totalUsers = await Spinerwinner.distinct("tuserId", match);
+        const overallPrize = await Spinerwinner.aggregate([
+            { $match: match },
+            { $group: { _id: null, total: { $sum: "$prize" } } },
+        ]);
+
+        res.status(200).json({
             status: "Success",
             data: {
-                spinner,
-                currentPage: page,
-                totalPages: Math.ceil(totalDocs / limit),
-                totalPrize: totalPrize[0].total || 0,
-                totalDocs
+                users: groupedData,
+                totalUsers: totalUsers.length,
+                totalPages: Math.ceil(totalUsers.length / limit),
+                overallPrize: overallPrize[0]?.total || 0,
             },
         });
     } catch (err) {
-        console.error("Error fetching users:", err);
+        console.error("Error fetching spinner data:", err);
         res.status(500).json({
             status: "Server error",
             error: err.message,
         });
     }
 });
+
 
 router.get("/dashboard-data", async (req, res) => {
     try {
