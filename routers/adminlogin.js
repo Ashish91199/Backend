@@ -309,9 +309,9 @@ router.get("/totalSpinner", async (req, res) => {
 router.get("/dashboard-data", async (req, res) => {
     try {
         const { filter } = req.query; // today | month | all
-        let dateFilter = {};
+        let dateFilter = null; // 🧠 agar null hoga toh "till date" ka data aayega (sab data)
 
-        // Apply date filters based on query
+        // 🗓️ Filter logic
         if (filter === "today") {
             const start = new Date();
             start.setHours(0, 0, 0, 0);
@@ -322,13 +322,18 @@ router.get("/dashboard-data", async (req, res) => {
             const start = new Date();
             start.setDate(1);
             start.setHours(0, 0, 0, 0);
-            const end = new Date(start);
+            const end = new Date();
             end.setMonth(end.getMonth() + 1);
             end.setDate(0);
             end.setHours(23, 59, 59, 999);
             dateFilter = { createdAt: { $gte: start, $lte: end } };
         }
+        // agar "all" ya "till date" ho, toh koi dateFilter nahi lagayenge
 
+        // agar filter lagana ho toh hi matchStage me $match add hoga
+        const matchStage = dateFilter ? [{ $match: dateFilter }] : [];
+
+        // 🔹 Parallel queries
         const [
             totalactiveuser,
             totalinactiveuser,
@@ -340,11 +345,20 @@ router.get("/dashboard-data", async (req, res) => {
             levelIncomedata,
             rankIncomeData,
         ] = await Promise.all([
-            User.countDocuments({ entry: { $gt: 0 }, ...dateFilter }),
-            User.countDocuments({ entry: 0, ...dateFilter }),
-            Deposithistory.countDocuments(dateFilter),
+            dateFilter
+                ? User.countDocuments({ entry: { $gt: 0 }, ...dateFilter })
+                : User.countDocuments({ entry: { $gt: 0 } }),
+
+            dateFilter
+                ? User.countDocuments({ entry: 0, ...dateFilter })
+                : User.countDocuments({ entry: 0 }),
+
+            dateFilter
+                ? Deposithistory.countDocuments(dateFilter)
+                : Deposithistory.countDocuments(),
+
             Deposithistory.aggregate([
-                { $match: dateFilter },
+                ...matchStage,
                 {
                     $group: {
                         _id: null,
@@ -352,8 +366,9 @@ router.get("/dashboard-data", async (req, res) => {
                     },
                 },
             ]),
+
             User.aggregate([
-                { $match: dateFilter },
+                ...matchStage,
                 {
                     $group: {
                         _id: null,
@@ -361,8 +376,9 @@ router.get("/dashboard-data", async (req, res) => {
                     },
                 },
             ]),
+
             User.aggregate([
-                { $match: dateFilter },
+                ...matchStage,
                 {
                     $group: {
                         _id: null,
@@ -370,8 +386,9 @@ router.get("/dashboard-data", async (req, res) => {
                     },
                 },
             ]),
+
             Spinerwinner.aggregate([
-                { $match: dateFilter },
+                ...matchStage,
                 {
                     $group: {
                         _id: null,
@@ -379,8 +396,9 @@ router.get("/dashboard-data", async (req, res) => {
                     },
                 },
             ]),
+
             levelIncome.aggregate([
-                { $match: dateFilter },
+                ...matchStage,
                 {
                     $group: {
                         _id: null,
@@ -388,8 +406,9 @@ router.get("/dashboard-data", async (req, res) => {
                     },
                 },
             ]),
+
             RankIncomeHistory.aggregate([
-                { $match: dateFilter },
+                ...matchStage,
                 {
                     $group: {
                         _id: null,
@@ -399,6 +418,7 @@ router.get("/dashboard-data", async (req, res) => {
             ]),
         ]);
 
+        // ✅ response
         return res.status(200).json({
             status: "Success",
             data: {
@@ -415,14 +435,13 @@ router.get("/dashboard-data", async (req, res) => {
             },
         });
     } catch (err) {
-        console.error("Error fetching users:", err);
+        console.error("Error fetching dashboard data:", err);
         res.status(500).json({
             status: "Server error",
             error: err.message,
         });
     }
 });
-
 
 module.exports = router;
 
