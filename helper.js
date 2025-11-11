@@ -93,6 +93,7 @@ const checkUserRank = async (user_id) => {
         if (!user) return console.log("❌ User not found");
 
         const directs = await User.find({ referrer_id: user_id });
+        console.log(directs.length, user_id, "direct")
         let newRank = user.rank || 0;
 
         // 🥇 Rank 1: If any one direct has 5 directs
@@ -316,70 +317,70 @@ const distrbuteRank = async () => {
 async function processWithdrawal(userAddress, hash, amount) {
 
 
-  try {
-    const lastWithdrawFund = await withdrawReward.findOne({ userAddress: userAddress }).sort({ _id: -1 });
+    try {
+        const lastWithdrawFund = await withdrawReward.findOne({ userAddress: userAddress }).sort({ _id: -1 });
 
-    let prevNonce = 0;
-    if (!lastWithdrawFund) {
-      prevNonce = -1;
-    } else {
-      prevNonce = lastWithdrawFund.nonce;
+        let prevNonce = 0;
+        if (!lastWithdrawFund) {
+            prevNonce = -1;
+        } else {
+            prevNonce = lastWithdrawFund.nonce;
+        }
+
+        const currNonce = await ContractAddress.methods.nonce(userAddress).call();
+        console.log(currNonce, "currNonce:::,", prevNonce, "currNonce:::111,", Number(currNonce))
+        if (prevNonce + 1 !== Number(currNonce)) {
+            throw new Error("Invalid withdrawal request!");
+        }
+        const vrsSign = await giveVrsForWithdraw(
+            userAddress,
+            hash,
+            Number(currNonce),
+            web3.utils.toWei(amount.toString(), "ether")
+        );
+
+        return vrsSign;
+    } catch (error) {
+        console.error("Error in processWithdrawal:", error);
+        throw error;
     }
-
-    const currNonce = await ContractAddress.methods.nonce(userAddress).call();
-    console.log(currNonce, "currNonce:::,", prevNonce, "currNonce:::111,", Number(currNonce))
-    if (prevNonce + 1 !== Number(currNonce)) {
-      throw new Error("Invalid withdrawal request!");
-    }
-    const vrsSign = await giveVrsForWithdraw(
-      userAddress,
-      hash,
-      Number(currNonce),
-      web3.utils.toWei(amount.toString(), "ether")
-    );
-
-    return vrsSign;
-  } catch (error) {
-    console.error("Error in processWithdrawal:", error);
-    throw error;
-  }
 }
 
 function giveVrsForWithdraw(user, hash, nonce, amount) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const data = {
-        user,
-        amount,
-      };
+    return new Promise(async (resolve, reject) => {
+        try {
+            const data = {
+                user,
+                amount,
+            };
 
-      const account = web3.eth.accounts.privateKeyToAccount(process.env.Operator_Wallet);
+            const account = web3.eth.accounts.privateKeyToAccount(process.env.Operator_Wallet);
 
-      web3.eth.accounts.wallet.add(account);
-      web3.eth.defaultAccount = account.address;
+            web3.eth.accounts.wallet.add(account);
+            web3.eth.defaultAccount = account.address;
 
-      const signature = await web3.eth.sign(hash, account.address);
+            const signature = await web3.eth.sign(hash, account.address);
 
-      const vrsValue = parseSignature(signature)
-      data["signature"] = vrsValue;
-      resolve({ ...data, amount });
+            const vrsValue = parseSignature(signature)
+            data["signature"] = vrsValue;
+            resolve({ ...data, amount });
 
-    //   console.log(data, "data::::")
-    } catch (error) {
-      console.error("Error in signing the message:", error);
-      reject(error);
-    }
-  });
+            //   console.log(data, "data::::")
+        } catch (error) {
+            console.error("Error in signing the message:", error);
+            reject(error);
+        }
+    });
 }
 
 function parseSignature(signature) {
 
-  const sigParams = signature.substr(2);
-  const v = "0x" + sigParams.substr(64 * 2, 2);
-  const r = "0x" + sigParams.substr(0, 64);
-  const s = "0x" + sigParams.substr(64, 64);
+    const sigParams = signature.substr(2);
+    const v = "0x" + sigParams.substr(64 * 2, 2);
+    const r = "0x" + sigParams.substr(0, 64);
+    const s = "0x" + sigParams.substr(64, 64);
 
-  return { v, r, s };
+    return { v, r, s };
 }
 
-module.exports = { distributeLevelIncome, checkUserRank, cronRankCheck, distrbuteRank ,processWithdrawal};
+module.exports = { distributeLevelIncome, checkUserRank, cronRankCheck, distrbuteRank, processWithdrawal };

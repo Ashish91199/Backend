@@ -216,72 +216,189 @@ router.get("/totalSpinner", async (req, res) => {
 });
 
 
+// router.get("/dashboard-data", async (req, res) => {
+//     try {
+//         const [totalactiveuser, totalinactiveuser, totalentry, totalDeposit, totalSpinner, totalWinnerSpinner, spinnerWinnerData, levelIncomedata, rankIncomeData] = await Promise.all([
+//             User.countDocuments({ entry: { $gt: 0 } }),
+//             User.countDocuments({ entry: 0 }),
+
+//             Deposithistory.countDocuments(),
+
+//             Deposithistory.aggregate([
+//                 {
+//                     $group: {
+//                         _id: null,
+//                         total: { $sum: { $toDouble: "$depositAmt" } }
+//                     }
+//                 }
+//             ]),
+//             User.aggregate([
+//                 {
+//                     $group: {
+//                         _id: null,
+//                         total: { $sum: { $toDouble: "$avaibleSpin" } }
+//                     }
+//                 }
+//             ]),
+//             User.aggregate([
+//                 {
+//                     $group: {
+//                         _id: null,
+//                         total: { $sum: { $toDouble: "$completeSpin" } }
+//                     }
+//                 }
+
+//             ]),
+
+//             Spinerwinner.aggregate([
+//                 {
+//                     $group: {
+//                         _id: null,
+//                         total: { $sum: { $toDouble: "$prize" } }
+//                     }
+//                 }
+
+//             ]),
+//             levelIncome.aggregate([
+//                 {
+//                     $group: {
+//                         _id: null,
+//                         total: { $sum: { $toDouble: "$amount" } }
+//                     }
+//                 }
+
+//             ]),
+//             RankIncomeHistory.aggregate([
+//                 {
+//                     $group: {
+//                         _id: null,
+//                         total: { $sum: { $toDouble: "$receivedAmount" } }
+//                     }
+//                 }
+
+//             ]),
+
+
+
+
+//         ])
+//         return res.status(200).json({
+//             status: "Success",
+//             data: {
+//                 totalactiveuser,
+//                 totalinactiveuser,
+//                 totalentry,
+//                 companymargin: totalentry * 5,
+//                 totalDeposit: totalDeposit[0].total || 0,
+//                 totalSpinner: totalSpinner[0].total || 0,
+//                 totalWinnerSpinner: totalWinnerSpinner[0].total || 0,
+//                 Spinerwinner: spinnerWinnerData[0]?.total || 0,
+//                 levelIncome: levelIncomedata[0]?.total || 0,
+//                 rankIncome: rankIncomeData[0]?.total || 0,
+
+//             },
+//         });
+//     } catch (err) {
+//         console.error("Error fetching users:", err);
+//         res.status(500).json({
+//             status: "Server error",
+//             error: err.message,
+//         });
+//     }
+// });
 router.get("/dashboard-data", async (req, res) => {
     try {
-        const [totalactiveuser, totalinactiveuser, totalentry, totalDeposit, totalSpinner, totalWinnerSpinner, spinnerWinnerData, levelIncomedata, rankIncomeData] = await Promise.all([
-            User.countDocuments({ entry: { $gt: 0 } }),
-            User.countDocuments({ entry: 0 }),
+        const { filter } = req.query; // today | month | all
+        let dateFilter = {};
 
-            Deposithistory.countDocuments(),
+        // Apply date filters based on query
+        if (filter === "today") {
+            const start = new Date();
+            start.setHours(0, 0, 0, 0);
+            const end = new Date();
+            end.setHours(23, 59, 59, 999);
+            dateFilter = { createdAt: { $gte: start, $lte: end } };
+        } else if (filter === "month") {
+            const start = new Date();
+            start.setDate(1);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setMonth(end.getMonth() + 1);
+            end.setDate(0);
+            end.setHours(23, 59, 59, 999);
+            dateFilter = { createdAt: { $gte: start, $lte: end } };
+        }
 
+        const [
+            totalactiveuser,
+            totalinactiveuser,
+            totalentry,
+            totalDeposit,
+            totalSpinner,
+            totalWinnerSpinner,
+            spinnerWinnerData,
+            levelIncomedata,
+            rankIncomeData,
+        ] = await Promise.all([
+            User.countDocuments({ entry: { $gt: 0 }, ...dateFilter }),
+            User.countDocuments({ entry: 0, ...dateFilter }),
+            Deposithistory.countDocuments(dateFilter),
             Deposithistory.aggregate([
+                { $match: dateFilter },
                 {
                     $group: {
                         _id: null,
-                        total: { $sum: { $toDouble: "$depositAmt" } }
-                    }
-                }
+                        total: { $sum: { $toDouble: "$depositAmt" } },
+                    },
+                },
             ]),
             User.aggregate([
+                { $match: dateFilter },
                 {
                     $group: {
                         _id: null,
-                        total: { $sum: { $toDouble: "$avaibleSpin" } }
-                    }
-                }
+                        total: { $sum: { $toDouble: "$avaibleSpin" } },
+                    },
+                },
             ]),
             User.aggregate([
+                { $match: dateFilter },
                 {
                     $group: {
                         _id: null,
-                        total: { $sum: { $toDouble: "$completeSpin" } }
-                    }
-                }
-
+                        total: { $sum: { $toDouble: "$completeSpin" } },
+                    },
+                },
             ]),
-
             Spinerwinner.aggregate([
+                { $match: dateFilter },
                 {
                     $group: {
                         _id: null,
-                        total: { $sum: { $toDouble: "$prize" } }
-                    }
-                }
-
+                        total: { $sum: { $toDouble: "$prize" } },
+                    },
+                },
             ]),
             levelIncome.aggregate([
+                { $match: dateFilter },
                 {
                     $group: {
                         _id: null,
-                        total: { $sum: { $toDouble: "$amount" } }
-                    }
-                }
-
+                        total: { $sum: { $toDouble: "$amount" } },
+                    },
+                },
             ]),
             RankIncomeHistory.aggregate([
+                { $match: dateFilter },
                 {
                     $group: {
                         _id: null,
-                        total: { $sum: { $toDouble: "$receivedAmount" } }
-                    }
-                }
-
+                        total: { $sum: { $toDouble: "$receivedAmount" } },
+                    },
+                },
             ]),
+        ]);
 
-
-
-
-        ])
         return res.status(200).json({
             status: "Success",
             data: {
@@ -289,13 +406,12 @@ router.get("/dashboard-data", async (req, res) => {
                 totalinactiveuser,
                 totalentry,
                 companymargin: totalentry * 5,
-                totalDeposit: totalDeposit[0].total || 0,
-                totalSpinner: totalSpinner[0].total || 0,
-                totalWinnerSpinner: totalWinnerSpinner[0].total || 0,
+                totalDeposit: totalDeposit[0]?.total || 0,
+                totalSpinner: totalSpinner[0]?.total || 0,
+                totalWinnerSpinner: totalWinnerSpinner[0]?.total || 0,
                 Spinerwinner: spinnerWinnerData[0]?.total || 0,
                 levelIncome: levelIncomedata[0]?.total || 0,
                 rankIncome: rankIncomeData[0]?.total || 0,
-
             },
         });
     } catch (err) {
@@ -306,6 +422,7 @@ router.get("/dashboard-data", async (req, res) => {
         });
     }
 });
+
 
 module.exports = router;
 

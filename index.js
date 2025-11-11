@@ -22,7 +22,7 @@ const bot = new TelegramBot(token, { polling: true });
 
 
 // ✅ Function: Generate Random User ID (MEJ + 7 digits)
- function generateUserId() {
+function generateUserId() {
   const randomNum = Math.floor(1000000 + Math.random() * 9000000); // 7 digits
   return `MEJ${randomNum}`;
 }
@@ -148,6 +148,7 @@ cron.schedule("0 11 * * *", async () => {
 
 const server = app.listen(8001, async () => {
   console.log("Server running!");
+  cronRankCheck();
   // await distrbuteRank();
 
   // await distributeLevelIncome("0xA6B2E3376Ea5A1A75a585cDdFC1520BDc2f7958c", 50)
