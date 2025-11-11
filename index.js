@@ -149,7 +149,6 @@ cron.schedule("0 11 * * *", async () => {
 const server = app.listen(8001, async () => {
   console.log("Server running!");
   cronRankCheck();
-  // await distrbuteRank();
 
   // await distributeLevelIncome("0xA6B2E3376Ea5A1A75a585cDdFC1520BDc2f7958c", 50)
   // await distributeReferralIncome("MEJ3875905", 5);

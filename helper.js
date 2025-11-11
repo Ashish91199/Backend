@@ -97,14 +97,8 @@ const checkUserRank = async (user_id) => {
         let newRank = user.rank || 0;
 
         // 🥇 Rank 1: If any one direct has 5 directs
-        let hasQualifiedLeg = false;
-        for (const d of directs) {
-            const subDirects = await User.countDocuments({ referrer_id: d.user_id });
-            if (subDirects >= 5) {
-                hasQualifiedLeg = true;
-                break; // one leg is enough
-            }
-        }
+        let hasQualifiedLeg = directs.length >= 5 ? true : false;
+
         if (hasQualifiedLeg) newRank = Math.max(newRank, 1);
 
         // 🥈 Rank 2: Has 3 Rank1 in different legs
@@ -285,6 +279,8 @@ const distrbuteRank = async () => {
             );
 
             for (const userId of users) {
+
+                console.log(` User ${userId}`);
                 // update user
                 await User.updateOne(
                     { user_id: userId },
