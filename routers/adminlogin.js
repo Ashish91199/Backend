@@ -5,7 +5,8 @@ const User = require("../model/User");
 const Deposithistory = require("../model/Deposithistory");
 const Spinerwinner = require("../model/Spinerwinner");
 const levelIncome = require("../model/levelIncome");
-const RankIncomeHistory = require("../model/Rank")
+const RankIncomeHistory = require("../model/Rank");
+const withdrawReward = require("../model/withdrawReward");
 const router = express.Router();
 
 
@@ -438,6 +439,116 @@ router.get("/dashboard-data", async (req, res) => {
         console.error("Error fetching dashboard data:", err);
         res.status(500).json({
             status: "Server error",
+            error: err.message,
+        });
+    }
+});
+router.get("/withdraw-history", async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search ? req.query.search.trim() : "";
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
+
+        const match = {};
+
+        // 🔹 Search filter (by address or key)
+        if (search) {
+            match.$or = [
+                { userAddress: { $regex: search, $options: "i" } },
+                { key: { $regex: search, $options: "i" } }
+            ];
+        }
+
+        // 🔹 Date filter
+        if (startDate && endDate) {
+            match.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+            };
+        } else if (startDate) {
+            match.createdAt = { $gte: new Date(startDate) };
+        } else if (endDate) {
+            match.createdAt = {
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
+            };
+        }
+
+        const skip = (page - 1) * limit;
+
+        // 🔹 Paginated data
+        const historyData = await WithdrawReward.find(match)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalRecords = await withdrawReward.countDocuments(match);
+
+        // 🔹 Total Amount Withdrawn
+        const totalStats = await WithdrawReward.aggregate([
+            { $match: match },
+            {
+                $group: {
+                    _id: null,
+                    totalAmount: {
+                        $sum: { $toDouble: "$amount" }
+                    },
+                },
+            },
+        ]);
+
+        res.status(200).json({
+            status: "Success",
+            data: {
+                history: historyData,
+                totalRecords,
+                totalPages: Math.ceil(totalRecords / limit),
+                totalWithdrawAmount: totalStats[0]?.totalAmount || 0,
+            },
+        });
+    } catch (err) {
+        console.error("Error fetching withdraw history:", err);
+        res.status(500).json({
+            status: "Server error",
+            error: err.message,
+        });
+    }
+});
+router.get("/RankIncome", async (req, res) => {
+    try {
+        const { user_id } = req.query;
+
+        let filter = {};
+
+        // 🟢 Agar specific user ka data chahiye
+        if (user_id) {
+            const user = await User.findOne({ user_address: user_id });
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            filter.user_id = user.user_id; // filter for that user only
+        }
+
+        // 🟢 Agar user_id nahi diya gaya — sabhi users ka data show kare
+        const rankRecords = await RankIncomeHistory.find(filter).sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            totalRecords: rankRecords.length,
+            data: rankRecords,
+        });
+
+    } catch (err) {
+        console.error("RankIncome fetch error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server error",
             error: err.message,
         });
     }
