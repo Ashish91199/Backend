@@ -13,7 +13,7 @@ const User = require("./model/User.js");
 const Spiner = require("./model/Spiner.js");
 const withdrawReward = require("./model/withdrawReward.js");
 
-const rpc = "https://opbnb-testnet-rpc.publicnode.com/";
+const rpc = "https://bsc-rpc.publicnode.com";
 
 // const rpc = process.env.RPC_URL;
 
