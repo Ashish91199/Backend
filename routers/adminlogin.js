@@ -478,7 +478,7 @@ router.get("/withdraw-history", async (req, res) => {
         const skip = (page - 1) * limit;
 
         // 🔹 Paginated data
-        const historyData = await WithdrawReward.find(match)
+        const historyData = await withdrawReward.find(match)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -486,7 +486,7 @@ router.get("/withdraw-history", async (req, res) => {
         const totalRecords = await withdrawReward.countDocuments(match);
 
         // 🔹 Total Amount Withdrawn
-        const totalStats = await WithdrawReward.aggregate([
+        const totalStats = await withdrawReward.aggregate([
             { $match: match },
             {
                 $group: {
