@@ -15,6 +15,7 @@ const AsyncLock = require("async-lock");
 const lock = new AsyncLock();
 const Web3 = require("web3");
 const { contractAddressABI, contractAddress } = require("../config");
+const withdrawReward = require("../model/withdrawReward");
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.RPC_URL));
 
 const ContractAddress = new web3.eth.Contract(contractAddressABI, contractAddress);
@@ -149,7 +150,32 @@ router.get("/deposithistory/:id", async (req, res) => {
     });
   }
 });
+router.get("/withdraw-history/:address", async (req, res) => {
+  const userAddress = req.params.address.toLowerCase();
 
+  try {
+    const withdraws = await withdrawReward
+      .find(
+        { userAddress: new RegExp(`^${userAddress}$`, "i") }, // CASE INSENSITIVE
+        "amount userAddress transactionHash createdAt"
+      )
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      status: "success",
+      count: withdraws.length,
+      data: withdraws,
+    });
+
+  } catch (error) {
+    console.error("Error fetching withdraw history:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Server error while fetching withdraw history",
+      error: error.message,
+    });
+  }
+});
 
 // Get user by ID
 router.get("/Users/:id", async (req, res) => {
@@ -544,7 +570,7 @@ router.post("/withdraw", async (req, res) => {
   if (!walletAddress || !amount) {
     return res.status(400).json({ success: false, message: "Invalid input" });
   }
-  const deadline = Math.floor(((new Date().getTime())/1000) + 5 * 60); // 5 min from now
+  const deadline = Math.floor(((new Date().getTime()) / 1000) + 5 * 60); // 5 min from now
 
   try {
     // Locking the walletAddress to prevent concurrent modifications

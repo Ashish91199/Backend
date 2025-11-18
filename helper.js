@@ -12,8 +12,6 @@ const web3 = new Web3(new Web3.providers.HttpProvider(process.env.RPC_URL));
 
 const ContractAddress = new web3.eth.Contract(contractAddressABI, contractAddress);
 
-
-
 const distributeLevelIncome = async (userAddress, amount) => {
     try {
         const directRequired = [0, 3, 5, 8, 10];
