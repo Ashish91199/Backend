@@ -1,6 +1,7 @@
 
-const contractAddress = "0x61d11c38460dE63cA926B4DAF2Db60032706d40B";
-const contractAddressABI = [
+const contractAddress = "0xC53e2F8d7A9947a58C289620971Fa91cAe5455C0";
+
+export const contractAddressABI = [
     {
         "anonymous": false,
         "inputs": [
@@ -75,7 +76,7 @@ const contractAddressABI = [
     },
     {
         "inputs": [
-            { "internalType": "address", "name": "_referrer", "type": "address" },
+            { "internalType": "address", "name": "referrer", "type": "address" },
             { "internalType": "string", "name": "tuser_id", "type": "string" }
         ],
         "name": "_registerUser",
@@ -88,6 +89,17 @@ const contractAddressABI = [
         "name": "authDeveloper",
         "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "address", "name": "newUser", "type": "address" },
+            { "internalType": "address", "name": "referrer", "type": "address" },
+            { "internalType": "string", "name": "tuser_id", "type": "string" }
+        ],
+        "name": "freeRegister",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
@@ -198,6 +210,16 @@ const contractAddressABI = [
             { "internalType": "uint256", "name": "deadline", "type": "uint256" }
         ],
         "name": "withdrawIncome",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "address", "name": "token", "type": "address" },
+            { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "withdrawToken",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
