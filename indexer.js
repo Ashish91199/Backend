@@ -141,44 +141,48 @@ const getWeb3Data = async (cbl) => {
                                 console.log("✅ Deposit saved:", item.transactionHash);
                             }
                         }
-                        if (item.event === "Withdrawal") {
-                            const key = `${item.transactionHash}${item.returnValues.time}${item.blockNumber}`;
-                            const transactionHash = item.transactionHash;
-                            const exists = await withdraw.findOne({ transactionHash });
+                    if (item.event === "Withdrawal") {
+    const key = `${item.transactionHash}${item.returnValues.time}${item.blockNumber}`;
+    const transactionHash = item.transactionHash;
+    const exists = await withdraw.findOne({ transactionHash });
 
-                            if (!exists) {
-                                const amount = Number(item.returnValues.amount) / 1e18;
+    if (!exists) {
+        const amount = Number(item.returnValues.amount) / 1e18;
 
-                                await withdrawReward
-                                    .create({
-                                        key,
-                                        id: item.returnValues.id,
-                                        amount,
-                                        userAddress: item.returnValues.userAddress,
-                                        nonce: item.returnValues.nonce,
-                                        transactionHash: item.transactionHash,
-                                        blockNumber: item.blockNumber,
-                                        time: item.returnValues.time || item.returnValues.timestamp,
-                                    })
-                                    .then(async () => {
-                                        console.log("Withdraw inserted");
+        // ADD 10% BONUS
+        const finalAmount = amount + (amount * 0.10); // amount * 1.10
 
-                                        await User.findOneAndUpdate(
-                                            { user_address: item.returnValues.userAddress },
-                                            {
-                                                $inc: {
-                                                    earning_balance: -amount, // subtract from earning balance
-                                                    total_claim: amount,      // add to total claim
-                                                },
-                                            },
-                                            { new: true }
-                                        );
-                                    })
-                                    .catch((err) => console.error("Withdraw insert error:", err));
-                            } else {
-                                console.log("Duplicate WithdrawFund event ignored");
-                            }
-                        }
+        await withdrawReward
+            .create({
+                key,
+                id: item.returnValues.id,
+                amount: finalAmount, // store final amount with 10%
+                userAddress: item.returnValues.userAddress,
+                nonce: item.returnValues.nonce,
+                transactionHash: item.transactionHash,
+                blockNumber: item.blockNumber,
+                time: item.returnValues.time || item.returnValues.timestamp,
+            })
+            .then(async () => {
+                console.log("Withdraw inserted");
+
+                await User.findOneAndUpdate(
+                    { user_address: item.returnValues.userAddress },
+                    {
+                        $inc: {
+                            earning_balance: -finalAmount, // subtract 10% extra
+                            total_claim: finalAmount,       // add 10% extra
+                        },
+                    },
+                    { new: true }
+                );
+            })
+            .catch((err) => console.error("Withdraw insert error:", err));
+    } else {
+        console.log("Duplicate WithdrawFund event ignored");
+    }
+}
+
 
                     }
                 } else {
